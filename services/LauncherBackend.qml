@@ -27,7 +27,17 @@ Scope {
                 "normalizedName": normalize(entry.name),
                 "searchableText": normalize([entry.name, entry.genericName, entry.comment, (entry.keywords ?? []).join(" ")].join(" "))
             }))
-    readonly property var recentApplications: recentState.appIds.map(entryId => DesktopEntries.byId(entryId)).filter(entry => entry !== null).slice(0, 6)
+    readonly property var frequentlyUsedApplications: {
+        const usage = usageState.appUsage ?? {};
+        return Object.keys(usage).map(entryId => {
+            const record = usage[entryId];
+            return {
+                "entry": DesktopEntries.byId(entryId),
+                "count": typeof record === "number" ? record : (record?.count ?? 0),
+                "lastUsed": typeof record === "number" ? 0 : (record?.lastUsed ?? 0)
+            };
+        }).filter(item => item.entry !== null && item.count > 0).sort((a, b) => b.count - a.count || b.lastUsed - a.lastUsed).slice(0, 6).map(item => item.entry);
+    }
     readonly property var wallpaperIndex: {
         const entries = [];
         for (let index = 0; index < wallpaperFiles.count; ++index) {
@@ -149,8 +159,15 @@ Scope {
     }
 
     function rememberApplication(entry): void {
-        const ids = recentState.appIds.filter(entryId => entryId !== entry.id);
-        recentState.appIds = [entry.id].concat(ids).slice(0, 6);
+        const usage = Object.assign({}, usageState.appUsage ?? {});
+        const previous = usage[entry.id];
+        const previousCount = typeof previous === "number" ? previous : (previous?.count ?? 0);
+        usage[entry.id] = {
+            "count": previousCount + 1,
+            "lastUsed": Date.now()
+        };
+        usageState.appUsage = usage;
+        usageFile.writeAdapter();
     }
 
     function activate(entry): void {
@@ -196,15 +213,17 @@ Scope {
     }
 
     FileView {
-        path: Quickshell.statePath("launcher.json")
+        id: usageFile
+
+        path: Config.launcherStatePath
         blockLoading: true
         atomicWrites: true
         printErrors: false
 
         JsonAdapter {
-            id: recentState
+            id: usageState
 
-            property var appIds: []
+            property var appUsage: ({})
         }
     }
 

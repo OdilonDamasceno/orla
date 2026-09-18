@@ -20,9 +20,9 @@ PanelWindow { // qmllint disable uncreatable-type
     property bool controlsOpen: false
     readonly property bool wallpaperMode: launcherBackend.wallpaperMode
     readonly property bool hasSearchQuery: launcherBackend.normalizedQuery.length > 0
-    readonly property bool showRecentApplications: launcherOpen && !wallpaperMode && !hasSearchQuery && launcherBackend.recentApplications.length > 0
+    readonly property bool showFrequentlyUsedApplications: launcherOpen && !wallpaperMode && !hasSearchQuery && launcherBackend.frequentlyUsedApplications.length > 0
     readonly property bool showSearchResults: launcherOpen && (hasSearchQuery || wallpaperMode)
-    readonly property bool expanded: showRecentApplications || showSearchResults
+    readonly property bool expanded: showFrequentlyUsedApplications || showSearchResults
     readonly property int resultRowHeight: wallpaperMode ? 80 : 72
     readonly property real collapsedWidth: Math.ceil(clockButtonLabel.implicitWidth + Theme.spacingLarge * 2)
     readonly property var searchResults: launcherBackend.results
@@ -195,8 +195,8 @@ PanelWindow { // qmllint disable uncreatable-type
         id: island
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
-        width: Math.min(root.width - Theme.floatingShadowMargin * 2, root.launcherOpen ? (root.expanded ? (root.wallpaperMode ? 560 : root.showRecentApplications ? 400 : 520) : 300) : root.controlsOpen ? systemControls.preferredWidth : root.collapsedWidth)
-        height: root.launcherOpen ? Math.min(root.height - Theme.floatingShadowMargin, 52 + (root.showRecentApplications ? 81 : root.showSearchResults ? 17 + Math.max(root.resultRowHeight, Math.min(root.searchResults.length, 6) * root.resultRowHeight) : 0)) : root.controlsOpen ? systemControls.implicitHeight : 28
+        width: Math.min(root.width - Theme.floatingShadowMargin * 2, root.launcherOpen ? (root.expanded ? (root.wallpaperMode ? 560 : root.showFrequentlyUsedApplications ? 400 : 520) : 300) : root.controlsOpen ? systemControls.preferredWidth : root.collapsedWidth)
+        height: root.launcherOpen ? Math.min(root.height - Theme.floatingShadowMargin, 52 + (root.showFrequentlyUsedApplications ? 81 : root.showSearchResults ? 17 + Math.max(root.resultRowHeight, Math.min(root.searchResults.length, 6) * root.resultRowHeight) : 0)) : root.controlsOpen ? systemControls.implicitHeight : 28
         radius: root.launcherOpen || root.controlsOpen ? Theme.radiusExtraLarge : 14
         color: Theme.islandSurface
         border.width: 1
@@ -369,9 +369,9 @@ PanelWindow { // qmllint disable uncreatable-type
         }
 
         Row {
-            id: recentApplications
+            id: frequentlyUsedApplications
 
-            visible: root.showRecentApplications
+            visible: root.showFrequentlyUsedApplications
             anchors {
                 horizontalCenter: parent.horizontalCenter
                 top: searchBar.bottom
@@ -380,10 +380,10 @@ PanelWindow { // qmllint disable uncreatable-type
             height: 64
             spacing: Theme.spacingMedium
             Accessible.role: Accessible.List
-            Accessible.name: I18n.tr("recentApplications")
+            Accessible.name: I18n.tr("frequentlyUsedApplications")
 
             Repeater {
-                model: launcherBackend.recentApplications
+                model: launcherBackend.frequentlyUsedApplications
 
                 delegate: Button {
                     id: recentApplication

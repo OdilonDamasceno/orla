@@ -82,7 +82,7 @@ quickshell ipc -p . call wallpapers isOpen
 
 Use as setas para selecionar resultados, Enter para abrir e Escape para fechar. Configure o atalho desejado no compositor usando o comando `toggle`.
 
-Ao abrir sem texto, o launcher mostra em uma linha até seis aplicativos iniciados recentemente por ele. Essa lista é persistida no diretório de estado do Quickshell. A pesquisa combina aplicativos instalados, arquivos não ocultos do diretório pessoal e até 500 páginas recentes do perfil `~/.config/BraveSoftware/Brave-Origin/Default/History`. O banco do Brave é aberto somente para leitura; arquivos e páginas são abertos pelo aplicativo padrão do sistema.
+Ao abrir sem texto, o launcher mostra em uma linha até seis aplicativos mais usados, ordenados pela contagem de aberturas e pela utilização mais recente em caso de empate. A contagem é persistida em `$XDG_STATE_HOME/orla-launcher.json` (ou `~/.local/state/orla-launcher.json`) e continua disponível após reiniciar ou atualizar a shell. A pesquisa combina aplicativos instalados, arquivos não ocultos do diretório pessoal e até 500 páginas recentes do perfil `~/.config/BraveSoftware/Brave-Origin/Default/History`. O banco do Brave é aberto somente para leitura; arquivos e páginas são abertos pelo aplicativo padrão do sistema.
 
 O seletor de wallpapers lista as imagens de `~/.config/hypr/wallpapers`, permite filtrar pelo nome e aplica a escolha em todos os monitores pelo `hyprpaper`. Para abri-lo pelo Hyprland, associe `Alt+W` a `orla ipc call wallpapers toggle`.
 
