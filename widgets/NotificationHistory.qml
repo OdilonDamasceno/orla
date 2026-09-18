@@ -11,24 +11,24 @@ Item {
     id: root
 
     readonly property var groups: {
-        const grouped = [];
-        const indexes = {};
+        const groupedNotifications = [];
+        const groupIndexByApp = Object.create(null);
         for (const notification of NotificationStore.history) {
             const key = notification.appKey;
-            let index = indexes[key];
+            let index = groupIndexByApp[key];
             if (index === undefined) {
-                index = grouped.length;
-                indexes[key] = index;
-                grouped.push({
+                index = groupedNotifications.length;
+                groupIndexByApp[key] = index;
+                groupedNotifications.push({
                     "appKey": key,
                     "appName": notification.appName || I18n.tr("unknownApplication"),
                     "appIcon": notification.appIcon,
                     "notifications": []
                 });
             }
-            grouped[index].notifications.push(notification);
+            groupedNotifications[index].notifications.push(notification);
         }
-        return grouped;
+        return groupedNotifications;
     }
     readonly property real contentImplicitHeight: historyHeader.implicitHeight + Theme.spacingMedium + Math.max(emptyState.implicitHeight, groupsColumn.implicitHeight)
 
@@ -64,7 +64,7 @@ Item {
                 padding: Theme.spacingMedium
                 hoverEnabled: true
                 Accessible.name: text
-                onClicked: NotificationStore.clear()
+                onClicked: NotificationStore.clearHistory()
 
                 contentItem: Text {
                     text: clearButton.text
@@ -267,7 +267,7 @@ Item {
                                         icon.source: "../icons/x.svg"
                                         icon.color: "transparent"
                                         Accessible.name: I18n.tr("removeFromHistory")
-                                        onClicked: NotificationStore.remove(historyCard.modelData.historyId)
+                                        onClicked: NotificationStore.removeHistoryEntry(historyCard.modelData.historyId)
                                     }
                                 }
                             }

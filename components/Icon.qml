@@ -8,6 +8,7 @@ Item {
 
     property alias source: image.source
     property color color: "transparent"
+    readonly property bool colorized: color.a > 0
 
     implicitWidth: 14
     implicitHeight: 14
@@ -18,7 +19,7 @@ Item {
         sourceSize.width: width
         sourceSize.height: height
         fillMode: Image.PreserveAspectFit
-        layer.enabled: root.color.a > 0
+        layer.enabled: root.colorized
         layer.effect: MultiEffect {
             colorization: 1
             colorizationColor: root.color

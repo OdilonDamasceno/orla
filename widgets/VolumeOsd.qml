@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Pipewire
 import Quickshell.Wayland
+import "../components"
 import "../singletons"
 
 Scope {
@@ -13,8 +14,8 @@ Scope {
 
     required property ShellScreen targetScreen
 
-    readonly property var audioSink: Pipewire.defaultAudioSink
-    readonly property var audio: root.audioSink?.audio ?? null
+    readonly property var defaultAudioSink: Pipewire.defaultAudioSink
+    readonly property var audio: root.defaultAudioSink?.audio ?? null
     readonly property real volumeLevel: root.audio?.muted ? 0 : Math.max(0, Math.min(1, root.audio?.volume ?? 0))
     readonly property bool isCurrentScreen: root.targetScreen?.name === Config.currentScreen?.name
 
@@ -26,7 +27,7 @@ Scope {
     }
 
     PwObjectTracker {
-        objects: root.audioSink ? [root.audioSink] : []
+        objects: root.defaultAudioSink ? [root.defaultAudioSink] : []
     }
 
     Connections {
@@ -95,7 +96,7 @@ Scope {
 
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.labelSize
-                    text: root.audioSink?.description ?? I18n.tr("audioUnavailable")
+                    text: root.defaultAudioSink?.description ?? I18n.tr("audioUnavailable")
                     color: Theme.textPrimary
                     elide: Text.ElideRight
                 }

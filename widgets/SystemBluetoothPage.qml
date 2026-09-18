@@ -5,15 +5,16 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
+import "../components"
 import "../singletons"
 
 ScrollView {
     id: root
     signal externalOpened
-    readonly property var adapter: Bluetooth.defaultAdapter
-    readonly property var devices: (root.adapter?.devices.values ?? []).slice().sort((a, b) => Number(b.connected) - Number(a.connected) || Number(b.paired) - Number(a.paired) || a.name.localeCompare(b.name))
-    readonly property var pairingApp: DesktopEntries.byId("blueman-manager")
-    readonly property bool busy: root.adapter?.state === BluetoothAdapterState.Enabling || root.adapter?.state === BluetoothAdapterState.Disabling
+    readonly property var bluetoothAdapter: Bluetooth.defaultAdapter
+    readonly property var devices: (root.bluetoothAdapter?.devices.values ?? []).slice().sort((a, b) => Number(b.connected) - Number(a.connected) || Number(b.paired) - Number(a.paired) || a.name.localeCompare(b.name))
+    readonly property var pairingApplication: DesktopEntries.byId("blueman-manager")
+    readonly property bool adapterBusy: root.bluetoothAdapter?.state === BluetoothAdapterState.Enabling || root.bluetoothAdapter?.state === BluetoothAdapterState.Disabling
     property BluetoothDevice requestedDevice: null
     property bool expectedConnection: false
     property string errorMessage: ""
@@ -23,10 +24,10 @@ ScrollView {
     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
     function openPairing(): void {
-        if (root.pairingApp) {
-            const app = root.pairingApp;
+        if (root.pairingApplication) {
+            const application = root.pairingApplication;
             root.externalOpened();
-            app.execute();
+            application.execute();
         } else {
             root.errorMessage = I18n.tr("pairingUnavailable");
         }
@@ -44,9 +45,9 @@ ScrollView {
     }
 
     Binding {
-        target: root.adapter
+        target: root.bluetoothAdapter
         property: "discovering"
-        when: root.adapter !== null && scanTimer.running
+        when: root.bluetoothAdapter !== null && scanTimer.running
         value: true
         restoreMode: Binding.RestoreBindingOrValue
     }
@@ -70,9 +71,9 @@ ScrollView {
         }
     }
     Connections {
-        target: root.adapter
+        target: root.bluetoothAdapter
         function onEnabledChanged(): void {
-            if (!root.adapter?.enabled) {
+            if (!root.bluetoothAdapter?.enabled) {
                 scanTimer.stop();
                 connectionTimeout.stop();
             }
@@ -86,25 +87,25 @@ ScrollView {
         ServiceToggle {
             Layout.fillWidth: true
             title: I18n.tr("bluetooth")
-            status: !root.adapter ? I18n.tr("serviceUnavailable") : root.busy ? I18n.tr("serviceChanging") : root.adapter.state === BluetoothAdapterState.Blocked ? I18n.tr("serviceBlocked") : I18n.tr(root.adapter.enabled ? "serviceOn" : "serviceOff")
+            status: !root.bluetoothAdapter ? I18n.tr("serviceUnavailable") : root.adapterBusy ? I18n.tr("serviceChanging") : root.bluetoothAdapter.state === BluetoothAdapterState.Blocked ? I18n.tr("serviceBlocked") : I18n.tr(root.bluetoothAdapter.enabled ? "serviceOn" : "serviceOff")
             iconSource: "../icons/bluetooth.svg"
-            checked: root.adapter?.enabled ?? false
-            enabled: root.adapter !== null && root.adapter.state !== BluetoothAdapterState.Blocked && !root.busy
-            onClicked: { if (root.adapter) root.adapter.enabled = !root.adapter.enabled; }
+            checked: root.bluetoothAdapter?.enabled ?? false
+            enabled: root.bluetoothAdapter !== null && root.bluetoothAdapter.state !== BluetoothAdapterState.Blocked && !root.adapterBusy
+            onClicked: { if (root.bluetoothAdapter) root.bluetoothAdapter.enabled = !root.bluetoothAdapter.enabled; }
         }
         RowLayout {
             Layout.fillWidth: true
-            SplashButton {
+            StateLayerButton {
                 Layout.fillWidth: true
                 implicitHeight: Theme.controlTargetSize
                 text: I18n.tr(scanTimer.running ? "stopSearching" : "searchDevices")
-                enabled: root.adapter?.enabled ?? false
+                enabled: root.bluetoothAdapter?.enabled ?? false
                 onClicked: scanTimer.running ? scanTimer.stop() : scanTimer.restart()
             }
-            SplashButton {
+            StateLayerButton {
                 implicitHeight: Theme.controlTargetSize
                 text: I18n.tr("pairDevice")
-                enabled: (root.adapter?.enabled ?? false) && root.pairingApp !== null
+                enabled: (root.bluetoothAdapter?.enabled ?? false) && root.pairingApplication !== null
                 onClicked: root.openPairing()
             }
         }
@@ -119,7 +120,7 @@ ScrollView {
             Accessible.role: Accessible.AlertMessage
         }
         Repeater {
-            model: root.adapter?.enabled ? root.devices : []
+            model: root.bluetoothAdapter?.enabled ? root.devices : []
             delegate: ServiceListItem {
                 required property var modelData
                 Layout.fillWidth: true
@@ -134,8 +135,8 @@ ScrollView {
         }
         Text {
             Layout.fillWidth: true
-            visible: root.devices.length === 0 || !(root.adapter?.enabled ?? false)
-            text: I18n.tr(!root.adapter ? "serviceUnavailable" : !root.adapter.enabled ? "bluetoothOffHint" : scanTimer.running ? "searchingDevices" : "noDevices")
+            visible: root.devices.length === 0 || !(root.bluetoothAdapter?.enabled ?? false)
+            text: I18n.tr(!root.bluetoothAdapter ? "serviceUnavailable" : !root.bluetoothAdapter.enabled ? "bluetoothOffHint" : scanTimer.running ? "searchingDevices" : "noDevices")
             color: Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: Theme.bodySize
@@ -143,7 +144,7 @@ ScrollView {
         }
         Text {
             Layout.fillWidth: true
-            text: I18n.tr(root.pairingApp ? "pairingHint" : "pairingUnavailable")
+            text: I18n.tr(root.pairingApplication ? "pairingHint" : "pairingUnavailable")
             color: Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: Theme.labelSize

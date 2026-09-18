@@ -11,8 +11,10 @@ As regras abaixo são decisões de design deste projeto, não uma declaração d
 ## Estrutura do projeto
 
 - `shell.qml`: entrada da shell, serviços e composição das instâncias por monitor.
-- `AppBar.qml`: barra superior e organização dos controles.
-- `widgets/`: componentes, launcher, painéis, notificações e controles.
+- `surfaces/`: superfícies Wayland e composição das janelas visíveis.
+- `components/`: primitivas visuais reutilizáveis e sem estado de domínio.
+- `widgets/`: launcher, painéis, notificações e controles de domínio.
+- `services/`: lógica sem interface, processos e ciclos de vida auxiliares.
 - `singletons/Theme.qml`: fonte e destino dos tokens visuais compartilhados.
 - `singletons/Config.qml`: estado e configuração compartilhados.
 - `singletons/I18n.qml`: traduções e formatação localizada.

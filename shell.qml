@@ -2,17 +2,17 @@
 
 import Quickshell
 import QtQuick
-import "widgets"
+import "surfaces"
 
 Scope {
-    Notification {}
+    NotificationOverlay {}
 
-    ApplicationLauncher {}
+    TopIsland {}
 
     Variants {
         model: Quickshell.screens
         delegate: Component {
-            AppBar {
+            ScreenBar {
                 required property var modelData
                 screen: modelData
             }

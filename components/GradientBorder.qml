@@ -2,7 +2,7 @@ import QtQuick
 import "../singletons"
 
 Canvas {
-    id: borderCanvas
+    id: root
     property real cornerRadius: parent ? parent.radius : 0
 
     onWidthChanged: requestPaint()
@@ -13,13 +13,13 @@ Canvas {
     z: 1
 
     onPaint: {
-        const context = borderCanvas.getContext("2d");
+        const context = root.getContext("2d");
         const inset = 0.5;
         const left = inset;
         const top = inset;
-        const right = borderCanvas.width - inset;
-        const bottom = borderCanvas.height - inset;
-        const radius = Math.max(0, Math.min(borderCanvas.cornerRadius, width / 2, height / 2) - inset);
+        const right = root.width - inset;
+        const bottom = root.height - inset;
+        const radius = Math.max(0, Math.min(root.cornerRadius, width / 2, height / 2) - inset);
         const white = Theme.glassHighlight;
         const black = "#00000000";
 

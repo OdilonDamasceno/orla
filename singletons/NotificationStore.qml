@@ -10,9 +10,9 @@ Singleton {
     readonly property int historyLimit: 100
     property int nextHistoryId: 1
     property var history: []
-    property alias notifications: notificationServer.trackedNotifications
+    property alias activeNotifications: notificationServer.trackedNotifications
 
-    function capture(notification): void {
+    function captureNotification(notification): void {
         const entry = {
             "historyId": root.nextHistoryId++,
             "notificationId": notification.id,
@@ -28,11 +28,11 @@ Singleton {
         root.history = [entry].concat(previous).slice(0, root.historyLimit);
     }
 
-    function remove(historyId: int): void {
+    function removeHistoryEntry(historyId: int): void {
         root.history = root.history.filter(item => item.historyId !== historyId);
     }
 
-    function clear(): void {
+    function clearHistory(): void {
         root.history = [];
     }
 
@@ -47,7 +47,7 @@ Singleton {
         persistenceSupported: true
 
         onNotification: notification => {
-            root.capture(notification);
+            root.captureNotification(notification);
             notification.tracked = true;
         }
     }

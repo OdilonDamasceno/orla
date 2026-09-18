@@ -7,35 +7,48 @@ import Quickshell.Bluetooth
 import Quickshell.Networking
 import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
+import "../components"
 import "../singletons"
 
 Item {
     id: root
 
+    enum Page {
+        Home,
+        Network,
+        Bluetooth,
+        Audio,
+        Input
+    }
+
     property bool active: false
-    property string page: "home"
+    property int currentPage: SystemControlsPanel.Home
     property real maximumHeight: Theme.controlsPopupMaxHeight
-    readonly property bool showNotificationHistory: root.page === "home"
-    readonly property var audioSink: Pipewire.defaultAudioSink
-    readonly property var audioSource: Pipewire.defaultAudioSource
-    readonly property var adapter: Bluetooth.defaultAdapter
-    readonly property string networkName: {
+    readonly property bool showNotificationHistory: root.currentPage === SystemControlsPanel.Home
+    readonly property var defaultAudioSink: Pipewire.defaultAudioSink
+    readonly property var defaultAudioSource: Pipewire.defaultAudioSource
+    readonly property var bluetoothAdapter: Bluetooth.defaultAdapter
+    readonly property var connectedNetwork: {
         for (const device of Networking.devices.values) {
             for (const network of device.networks.values) {
                 if (network.connected)
-                    return network.name;
+                    return network;
             }
         }
-        return I18n.tr("notConnected");
+        return null;
     }
-    readonly property string bluetoothName: {
-        const devices = root.adapter?.devices.values.filter(device => device.connected) ?? [];
-        return devices.length ? devices.map(device => device.name).join(", ") : I18n.tr(root.adapter?.enabled ? "serviceOn" : "serviceOff");
+    readonly property bool networkConnected: Networking.devices.values.some(device => device.connected)
+    readonly property string networkStatus: root.connectedNetwork?.name ?? I18n.tr("notConnected")
+    readonly property string bluetoothStatus: {
+        const devices = root.bluetoothAdapter?.devices.values.filter(device => device.connected) ?? [];
+        return devices.length ? devices.map(device => device.name).join(", ") : I18n.tr(root.bluetoothAdapter?.enabled ? "serviceOn" : "serviceOff");
     }
-    readonly property real controlPaneWidth: (root.page === "home" ? Theme.controlsPopupWidth : Theme.controlsDetailsWidth) - Theme.spacingLarge * 2
+    readonly property var activeMediaPlayer: Mpris.players.values.find(player => player.isPlaying) ?? Mpris.players.values[0] ?? null
+    readonly property string pageTitleKey: root.currentPage === SystemControlsPanel.Network ? "internet" : root.currentPage === SystemControlsPanel.Bluetooth ? "bluetooth" : root.currentPage === SystemControlsPanel.Input ? "microphone" : "audio"
+    readonly property real controlPaneWidth: (root.currentPage === SystemControlsPanel.Home ? Theme.controlsPopupWidth : Theme.controlsDetailsWidth) - Theme.spacingLarge * 2
     readonly property real preferredWidth: root.showNotificationHistory ? Theme.spacingLarge * 2 + root.controlPaneWidth + Theme.spacingLarge * 2 + 1 + Theme.notificationHistoryWidth : Theme.controlsDetailsWidth
     readonly property Item loadedPage: pageLoader.item as Item
-    readonly property real bodyHeight: root.page === "home" ? homeContent.implicitHeight : root.loadedPage?.implicitHeight ?? homeContent.implicitHeight
+    readonly property real bodyHeight: root.currentPage === SystemControlsPanel.Home ? homeContent.implicitHeight : root.loadedPage?.implicitHeight ?? homeContent.implicitHeight
     readonly property real chromeHeight: Theme.spacingLarge * 2 + (header.visible ? Theme.spacingMedium + header.implicitHeight : 0)
 
     signal closeRequested
@@ -44,14 +57,14 @@ Item {
     implicitWidth: root.preferredWidth
     implicitHeight: Math.max(1, Math.min(Math.ceil(Math.max(root.bodyHeight, root.showNotificationHistory ? notificationHistory.contentImplicitHeight : 0) + root.chromeHeight), root.maximumHeight))
 
-    function navigate(destination: string): void {
-        root.page = destination;
+    function navigate(destination: int): void {
+        root.currentPage = destination;
         pageAnimation.restart();
-        Qt.callLater(() => destination === "home" ? internetTile.forceActiveFocus(Qt.TabFocusReason) : backButton.forceActiveFocus(Qt.TabFocusReason));
+        Qt.callLater(() => destination === SystemControlsPanel.Home ? internetTile.forceActiveFocus(Qt.TabFocusReason) : backButton.forceActiveFocus(Qt.TabFocusReason));
     }
 
     onActiveChanged: {
-        root.page = "home";
+        root.currentPage = SystemControlsPanel.Home;
         if (active) {
             pageAnimation.restart();
             Qt.callLater(() => internetTile.forceActiveFocus(Qt.TabFocusReason));
@@ -59,7 +72,7 @@ Item {
     }
 
     PwObjectTracker {
-        objects: [root.audioSink, root.audioSource].filter(node => node !== null)
+        objects: [root.defaultAudioSink, root.defaultAudioSource].filter(node => node !== null)
     }
 
     ColumnLayout {
@@ -70,26 +83,26 @@ Item {
         RowLayout {
             id: header
 
-            visible: root.page !== "home"
+            visible: root.currentPage !== SystemControlsPanel.Home
             Layout.fillWidth: true
             spacing: Theme.spacingMedium
 
-            SplashButton {
+            StateLayerButton {
                 id: backButton
 
-                visible: root.page !== "home"
+                visible: root.currentPage !== SystemControlsPanel.Home
                 Layout.preferredWidth: Theme.controlTargetSize
                 Layout.preferredHeight: Theme.controlTargetSize
                 leftPadding: Theme.spacingMedium
                 rightPadding: Theme.spacingMedium
                 icon.source: "../icons/arrow-left.svg"
                 Accessible.name: I18n.tr("back")
-                onClicked: root.navigate("home")
+                onClicked: root.navigate(SystemControlsPanel.Home)
             }
 
             Text {
                 Layout.fillWidth: true
-                text: I18n.tr(root.page === "network" ? "internet" : root.page === "input" ? "microphone" : root.page)
+                text: I18n.tr(root.pageTitleKey)
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.titleSize
                 font.weight: Font.DemiBold
@@ -124,7 +137,7 @@ Item {
                     id: homeScroll
 
                     anchors.fill: parent
-                    visible: root.page === "home"
+                    visible: root.currentPage === SystemControlsPanel.Home
                     contentWidth: availableWidth
                     contentHeight: homeContent.implicitHeight
                     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
@@ -137,7 +150,7 @@ Item {
 
                         AudioLevelSlider {
                             Layout.fillWidth: true
-                            audio: root.audioSink?.audio ?? null
+                            audio: root.defaultAudioSink?.audio ?? null
                         }
 
                         GridLayout {
@@ -152,40 +165,40 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 1
                                 title: I18n.tr("internet")
-                                status: root.networkName
+                                status: root.networkStatus
                                 iconSource: "../icons/wifi.svg"
-                                active: Networking.devices.values.some(device => device.connected)
-                                onClicked: root.navigate("network")
+                                active: root.networkConnected
+                                onClicked: root.navigate(SystemControlsPanel.Network)
                             }
 
                             ControlTile {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 1
                                 title: I18n.tr("bluetooth")
-                                status: root.adapter ? root.bluetoothName : I18n.tr("serviceUnavailable")
+                                status: root.bluetoothAdapter ? root.bluetoothStatus : I18n.tr("serviceUnavailable")
                                 iconSource: "../icons/bluetooth.svg"
-                                active: root.adapter?.enabled ?? false
-                                onClicked: root.navigate("bluetooth")
+                                active: root.bluetoothAdapter?.enabled ?? false
+                                onClicked: root.navigate(SystemControlsPanel.Bluetooth)
                             }
 
                             ControlTile {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 1
                                 title: I18n.tr("audio")
-                                status: !root.audioSink ? I18n.tr("audioUnavailable") : root.audioSink.audio?.muted ? I18n.tr("audioMuted") : root.audioSink.description
+                                status: !root.defaultAudioSink ? I18n.tr("audioUnavailable") : root.defaultAudioSink.audio?.muted ? I18n.tr("audioMuted") : root.defaultAudioSink.description
                                 iconSource: "../icons/speaker-high.svg"
-                                active: root.audioSink?.audio !== null && !(root.audioSink?.audio?.muted ?? true)
-                                onClicked: root.navigate("audio")
+                                active: root.defaultAudioSink?.audio !== null && !(root.defaultAudioSink?.audio?.muted ?? true)
+                                onClicked: root.navigate(SystemControlsPanel.Audio)
                             }
 
                             ControlTile {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 1
                                 title: I18n.tr("microphone")
-                                status: !root.audioSource ? I18n.tr("serviceUnavailable") : root.audioSource.audio?.muted ? I18n.tr("audioMuted") : root.audioSource.description
+                                status: !root.defaultAudioSource ? I18n.tr("serviceUnavailable") : root.defaultAudioSource.audio?.muted ? I18n.tr("audioMuted") : root.defaultAudioSource.description
                                 iconSource: "../icons/microphone.svg"
-                                active: root.audioSource?.audio !== null && !(root.audioSource?.audio?.muted ?? true)
-                                onClicked: root.navigate("input")
+                                active: root.defaultAudioSource?.audio !== null && !(root.defaultAudioSource?.audio?.muted ?? true)
+                                onClicked: root.navigate(SystemControlsPanel.Input)
                             }
                         }
 
@@ -201,10 +214,10 @@ Item {
 
                         MediaPlayerCard {
                             Layout.fillWidth: true
-                            player: Mpris.players.values.find(player => player.isPlaying) ?? Mpris.players.values[0] ?? null
-                            active: root.active && root.page === "home"
-                            outputName: root.audioSink?.description ?? I18n.tr("audioUnavailable")
-                            onOutputRequested: root.navigate("audio")
+                            player: root.activeMediaPlayer
+                            active: root.active && root.currentPage === SystemControlsPanel.Home
+                            outputName: root.defaultAudioSink?.description ?? I18n.tr("audioUnavailable")
+                            onOutputRequested: root.navigate(SystemControlsPanel.Audio)
                         }
                     }
                 }
@@ -213,8 +226,8 @@ Item {
                     id: pageLoader
 
                     anchors.fill: parent
-                    active: root.active && root.page !== "home"
-                    sourceComponent: root.page === "network" ? networkPage : root.page === "bluetooth" ? bluetoothPage : audioPage
+                    active: root.active && root.currentPage !== SystemControlsPanel.Home
+                    sourceComponent: root.currentPage === SystemControlsPanel.Network ? networkPage : root.currentPage === SystemControlsPanel.Bluetooth ? bluetoothPage : audioPage
                 }
             }
 
@@ -253,7 +266,7 @@ Item {
         id: audioPage
 
         SystemAudioPage {
-            inputMode: root.page === "input"
+            inputMode: root.currentPage === SystemControlsPanel.Input
         }
     }
 }

@@ -40,9 +40,11 @@
           root = ./.;
           fileset = lib.fileset.unions [
             ./shell.qml
-            ./AppBar.qml
+            ./components
             ./icons
+            ./services
             ./singletons
+            ./surfaces
             ./widgets
           ];
         };

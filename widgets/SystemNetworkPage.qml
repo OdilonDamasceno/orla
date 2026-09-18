@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell.Networking
+import "../components"
 import "../singletons"
 
 ScrollView {
@@ -173,12 +174,12 @@ ScrollView {
             }
             RowLayout {
                 Layout.alignment: Qt.AlignRight
-                SplashButton {
+                StateLayerButton {
                     text: I18n.tr("cancel")
                     implicitHeight: Theme.controlTargetSize
                     onClicked: { password.clear(); root.passwordNetwork = null; }
                 }
-                SplashButton {
+                StateLayerButton {
                     text: I18n.tr("connect")
                     implicitHeight: Theme.controlTargetSize
                     enabled: password.text.length > 0

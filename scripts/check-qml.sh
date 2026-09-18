@@ -16,5 +16,5 @@ for import_path in "${import_paths[@]}"; do
     fi
 done
 
-qmllint "${import_args[@]}" shell.qml AppBar.qml singletons/*.qml widgets/*.qml
+qmllint "${import_args[@]}" shell.qml components/*.qml services/*.qml singletons/*.qml surfaces/*.qml widgets/*.qml
 git diff --check

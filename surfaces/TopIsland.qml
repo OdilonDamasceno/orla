@@ -4,110 +4,41 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
-import Qt.labs.folderlistmodel
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
+import "../services"
 import "../singletons"
+import "../widgets"
 
-PanelWindow {
+PanelWindow { // qmllint disable uncreatable-type
     id: root
 
     // A compact island that expands around the search results.
     property bool launcherOpen: false
     property bool controlsOpen: false
-    property string launcherMode: "applications"
-    property bool applyingWallpaper: false
-    property string wallpaperError: ""
-    readonly property bool wallpaperMode: launcherMode === "wallpapers"
-    readonly property bool expanded: launcherOpen && (query.length > 0 || wallpaperMode)
+    readonly property bool wallpaperMode: launcherBackend.wallpaperMode
+    readonly property bool expanded: launcherOpen && (launcherBackend.normalizedQuery.length > 0 || wallpaperMode)
     readonly property int resultRowHeight: wallpaperMode ? 80 : 72
     readonly property real collapsedWidth: Math.ceil(clockButtonLabel.implicitWidth + Theme.spacingLarge * 2)
-    readonly property string query: normalize(search.text.trim())
-    readonly property var wallpaperEntries: {
-        const entries = [];
-        const terms = query.length ? query.split(/\s+/) : [];
-        for (let index = 0; index < wallpaperFiles.count; ++index) {
-            const fileName = wallpaperFiles.get(index, "fileName");
-            const searchableName = normalize(fileName);
-            if (!terms.every(term => searchableName.includes(term)))
-                continue;
-            entries.push({
-                "name": fileName.replace(/\.[^.]+$/, ""),
-                "fileName": fileName,
-                "path": wallpaperFiles.get(index, "filePath"),
-                "url": wallpaperFiles.get(index, "fileUrl")
-            });
-        }
-        return entries;
-    }
-    readonly property var matches: {
-        if (wallpaperMode)
-            return wallpaperEntries;
-        if (!query.length)
-            return [];
-        const terms = query.split(/\s+/);
-        return DesktopEntries.applications.values.filter(entry => {
-            const haystack = normalize([entry.name, entry.genericName, entry.comment, (entry.keywords ?? []).join(" ")].join(" "));
-            return terms.every(term => haystack.includes(term));
-        }).sort((a, b) => {
-            const aPrefix = normalize(a.name).startsWith(query);
-            const bPrefix = normalize(b.name).startsWith(query);
-            return Number(bPrefix) - Number(aPrefix) || a.name.localeCompare(b.name);
-        });
-    }
-
-    function normalize(value: string): string {
-        return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    }
-
-    function launch(entry) {
-        if (!entry)
-            return;
-        entry.execute();
-        closeLauncher();
-    }
-
-    function activate(entry) {
-        if (wallpaperMode)
-            selectWallpaper(entry);
-        else
-            launch(entry);
-    }
-
-    function selectWallpaper(entry) {
-        if (!entry || applyingWallpaper)
-            return;
-        wallpaperError = "";
-        applyingWallpaper = true;
-        const monitors = Quickshell.screens.map(screen => screen.name);
-        wallpaperProcess.command = [
-            "sh",
-            "-c",
-            "wallpaper_path=$1; shift; for monitor do hyprctl hyprpaper wallpaper \"$monitor,$wallpaper_path,cover\" || exit 1; done",
-            "orla-wallpaper",
-            entry.path
-        ].concat(monitors);
-        wallpaperProcess.running = true;
-    }
+    readonly property var searchResults: launcherBackend.results
 
     function closeLauncher() {
         launcherOpen = false;
-        launcherMode = "applications";
-        wallpaperError = "";
+        launcherBackend.mode = LauncherBackend.Applications;
+        launcherBackend.errorMessage = "";
         search.clear();
     }
 
-    function toggleLauncher(mode: string) {
-        const requestedMode = mode || "applications";
-        if (launcherOpen && launcherMode === requestedMode) {
+    function toggleLauncher(mode: int): void {
+        if (launcherOpen && launcherBackend.mode === mode) {
             closeLauncher();
         } else {
             screen = Config.currentScreen;
             controlsOpen = false;
-            launcherMode = requestedMode;
-            wallpaperError = "";
+            launcherBackend.mode = mode;
+            launcherBackend.errorMessage = "";
             search.clear();
             launcherOpen = true;
             Qt.callLater(() => search.forceActiveFocus());
@@ -130,7 +61,7 @@ PanelWindow {
     IpcHandler {
         target: "launcher"
         function toggle(): void {
-            root.toggleLauncher("applications");
+            root.toggleLauncher(LauncherBackend.Applications);
         }
         function close(): void {
             root.closeLauncher();
@@ -143,7 +74,7 @@ PanelWindow {
     IpcHandler {
         target: "wallpapers"
         function toggle(): void {
-            root.toggleLauncher("wallpapers");
+            root.toggleLauncher(LauncherBackend.Wallpapers);
         }
         function close(): void {
             root.closeLauncher();
@@ -153,38 +84,11 @@ PanelWindow {
         }
     }
 
-    FolderListModel {
-        id: wallpaperFiles
+    LauncherBackend {
+        id: launcherBackend
 
-        folder: "file:///home/odilon/.config/hypr/wallpapers"
-        nameFilters: ["*.png", "*.jpg", "*.jpeg", "*.webp", "*.jxl"]
-        caseSensitive: false
-        showDirs: false
-        showFiles: true
-        showHidden: false
-        showOnlyReadable: true
-        sortField: FolderListModel.Name
-        sortCaseSensitive: false
-    }
-
-    Process {
-        id: wallpaperProcess
-
-        stdout: StdioCollector {
-            id: wallpaperProcessOutput
-        }
-        stderr: StdioCollector {
-            id: wallpaperProcessError
-        }
-        onExited: exitCode => {
-            root.applyingWallpaper = false;
-            if (exitCode === 0) {
-                root.closeLauncher();
-                return;
-            }
-            const details = (wallpaperProcessError.text || wallpaperProcessOutput.text).trim();
-            root.wallpaperError = details.length ? details : I18n.tr("wallpaperApplyFailed");
-        }
+        searchText: search.text
+        onActivationSucceeded: root.closeLauncher()
     }
 
     Shortcut {
@@ -194,8 +98,8 @@ PanelWindow {
         onActivated: {
             if (root.launcherOpen)
                 root.closeLauncher();
-            else if (systemControls.page !== "home")
-                systemControls.navigate("home");
+            else if (systemControls.currentPage !== SystemControlsPanel.Home)
+                systemControls.navigate(SystemControlsPanel.Home);
             else
                 root.closeControls();
         }
@@ -213,7 +117,9 @@ PanelWindow {
         left: true
         right: true
     }
-    margins.top: 2
+    margins { // qmllint disable unqualified unresolved-type
+        top: 2
+    }
     // Keep the Wayland surface stable: only the scene inside it animates.
     // Resizing the native window every frame competes with compositor animations.
     implicitHeight: Math.min(Math.max(501, Theme.controlsPopupMaxHeight) + Theme.floatingShadowMargin, screen ? screen.height - 16 : Math.max(501, Theme.controlsPopupMaxHeight) + Theme.floatingShadowMargin)
@@ -286,7 +192,7 @@ PanelWindow {
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
         width: Math.min(root.width - Theme.floatingShadowMargin * 2, root.launcherOpen ? (root.expanded ? (root.wallpaperMode ? 560 : 480) : 300) : root.controlsOpen ? systemControls.preferredWidth : root.collapsedWidth)
-        height: root.launcherOpen ? Math.min(root.height - Theme.floatingShadowMargin, 52 + (root.expanded ? 17 + Math.max(root.resultRowHeight, Math.min(root.matches.length, 6) * root.resultRowHeight) : 0)) : root.controlsOpen ? systemControls.implicitHeight : 28
+        height: root.launcherOpen ? Math.min(root.height - Theme.floatingShadowMargin, 52 + (root.expanded ? 17 + Math.max(root.resultRowHeight, Math.min(root.searchResults.length, 6) * root.resultRowHeight) : 0)) : root.controlsOpen ? systemControls.implicitHeight : 28
         radius: root.launcherOpen || root.controlsOpen ? Theme.radiusExtraLarge : 14
         color: Theme.islandSurface
         border.width: 1
@@ -410,7 +316,7 @@ PanelWindow {
                 selectByMouse: true
                 focus: root.launcherOpen
                 Accessible.name: placeholderText
-                onAccepted: root.activate(root.matches[results.currentIndex])
+                onAccepted: launcherBackend.activate(root.searchResults[results.currentIndex])
                 Keys.onDownPressed: root.moveSelection(1)
                 Keys.onUpPressed: root.moveSelection(-1)
             }
@@ -469,7 +375,7 @@ PanelWindow {
                 rightMargin: 8
             }
             clip: true
-            model: root.matches
+            model: root.searchResults
             onModelChanged: currentIndex = count ? 0 : -1
             boundsBehavior: Flickable.StopAtBounds
             ScrollBar.vertical: ScrollBar {}
@@ -482,8 +388,8 @@ PanelWindow {
                 height: root.resultRowHeight
                 highlighted: ListView.isCurrentItem
                 Accessible.name: modelData.name
-                enabled: !root.applyingWallpaper
-                onClicked: root.activate(modelData)
+                enabled: !launcherBackend.applyingWallpaper
+                onClicked: launcherBackend.activate(modelData)
                 background: Rectangle {
                     id: resultBackground
 
@@ -538,7 +444,7 @@ PanelWindow {
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: root.wallpaperMode ? result.modelData.fileName : result.modelData.genericName || result.modelData.comment
+                            text: root.wallpaperMode ? (result.modelData.fileName ?? "") : (result.modelData.genericName || result.modelData.comment || "")
                             visible: text.length > 0
                             font {
                                 family: Theme.fontFamily
@@ -553,7 +459,7 @@ PanelWindow {
 
             Text {
                 anchors.centerIn: parent
-                visible: (root.query.length > 0 || root.wallpaperMode) && results.count === 0
+                visible: (launcherBackend.normalizedQuery.length > 0 || root.wallpaperMode) && results.count === 0
                 text: root.wallpaperMode ? I18n.tr("noWallpapers") : I18n.tr("noApplications")
                 color: Theme.textSecondary
                 font {
@@ -569,8 +475,8 @@ PanelWindow {
                     bottom: parent.bottom
                     margins: Theme.spacingLarge
                 }
-                visible: root.wallpaperError.length > 0
-                text: root.wallpaperError
+                visible: launcherBackend.errorMessage.length > 0
+                text: launcherBackend.errorMessage
                 color: Theme.error
                 wrapMode: Text.Wrap
                 horizontalAlignment: Text.AlignHCenter

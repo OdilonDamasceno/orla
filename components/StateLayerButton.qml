@@ -13,10 +13,10 @@ Button {
     hoverEnabled: true
     opacity: enabled ? 1 : 0.5
 
-    leftPadding: 14
-    rightPadding: 14
-    topPadding: 6
-    bottomPadding: 6
+    leftPadding: Theme.spacingCompact
+    rightPadding: Theme.spacingCompact
+    topPadding: Theme.spacingMedium
+    bottomPadding: Theme.spacingMedium
 
     background: Rectangle {
         anchors.fill: parent

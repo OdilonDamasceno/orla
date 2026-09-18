@@ -2,8 +2,8 @@ pragma ComponentBehavior: Bound
 
 import Quickshell
 import QtQuick
-import "widgets"
-import "singletons"
+import "../singletons"
+import "../widgets"
 
 PanelWindow { // qmllint disable uncreatable-type
     id: root
@@ -19,7 +19,7 @@ PanelWindow { // qmllint disable uncreatable-type
     exclusiveZone: Theme.barHeight
     mask: Region {}
 
-    Volume {
+    VolumeOsd {
         id: volumeOsd
         targetScreen: root.screen
     }

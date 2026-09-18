@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
+import "../components"
 import "../singletons"
 
 Rectangle {
@@ -227,7 +228,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: Theme.controlTargetSize
             spacing: Theme.spacingSmall
-            SplashButton {
+            StateLayerButton {
                 objectName: "mediaPreviousButton"
                 Layout.preferredWidth: Theme.controlTargetSize
                 Layout.preferredHeight: Theme.controlTargetSize
@@ -324,7 +325,7 @@ Rectangle {
                 ToolTip.visible: hovered || pressed
                 ToolTip.text: root.duration > 0 ? root.formatTime(value) + " / " + root.formatTime(root.duration) : I18n.tr("progressUnavailable")
             }
-            SplashButton {
+            StateLayerButton {
                 objectName: "mediaNextButton"
                 Layout.preferredWidth: Theme.controlTargetSize
                 Layout.preferredHeight: Theme.controlTargetSize

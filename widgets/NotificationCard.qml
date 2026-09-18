@@ -5,20 +5,21 @@ import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell.Widgets
+import "../components"
 import "../singletons"
 
 Rectangle {
     id: card
 
-    required property var modelData
+    required property var notification
     property bool expanded: false
     property bool replying: false
     readonly property bool hovered: cardHover.hovered || closeButton.hovered
     readonly property bool interacting: hovered || (expanded && replying) || inlineReply.activeFocus || closeButton.activeFocus
     signal interactionChanged(var notification, bool active)
 
-    onInteractingChanged: interactionChanged(modelData, interacting)
-    Component.onDestruction: interactionChanged(modelData, false)
+    onInteractingChanged: interactionChanged(notification, interacting)
+    Component.onDestruction: interactionChanged(notification, false)
 
     implicitWidth: 288
     height: Math.max(content.implicitHeight, 32) + 24
@@ -40,7 +41,7 @@ Rectangle {
     Button {
         id: expandButton
         anchors.fill: parent
-        Accessible.name: card.modelData?.summary ?? ""
+        Accessible.name: card.notification?.summary ?? ""
         background: Rectangle {
             color: "transparent"
             radius: card.radius
@@ -82,7 +83,7 @@ Rectangle {
             border.width: 1
         }
 
-        onClicked: card.modelData?.dismiss()
+        onClicked: card.notification?.dismiss()
     }
 
     RowLayout {
@@ -98,7 +99,7 @@ Rectangle {
             radius: 12
 
             Image {
-                source: card.modelData?.image ?? ""
+                source: card.notification?.image ?? ""
                 sourceSize.width: 32
                 sourceSize.height: 32
             }
@@ -114,7 +115,7 @@ Rectangle {
                 Layout.fillWidth: true
 
                 textFormat: Text.PlainText
-                text: card.modelData?.appName ?? ""
+                text: card.notification?.appName ?? ""
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.labelSize
@@ -124,7 +125,7 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
 
-                text: card.modelData?.summary ?? ""
+                text: card.notification?.summary ?? ""
                 textFormat: Text.PlainText
                 color: Theme.textPrimary
                 font.family: Theme.fontFamily
@@ -136,7 +137,7 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
 
-                text: card.modelData?.body ?? ""
+                text: card.notification?.body ?? ""
                 textFormat: Text.StyledText
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
@@ -150,20 +151,20 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.topMargin: 6
                 spacing: 6
-                visible: card.expanded && !card.replying && ((card.modelData?.actions.length ?? 0) > 0 || (card.modelData?.hasInlineReply ?? false))
+                visible: card.expanded && !card.replying && ((card.notification?.actions.length ?? 0) > 0 || (card.notification?.hasInlineReply ?? false))
 
                 Repeater {
                     // Inline reply is exposed separately from the regular actions.
-                    model: (card.modelData?.actions.length ?? 0) + (card.modelData?.hasInlineReply ? 1 : 0)
+                    model: (card.notification?.actions.length ?? 0) + (card.notification?.hasInlineReply ? 1 : 0)
 
                     delegate: Button {
                         id: actionButton
 
                         required property int index
-                        readonly property bool isReply: index === (card.modelData?.actions.length ?? 0)
+                        readonly property bool isReply: index === (card.notification?.actions.length ?? 0)
 
                         Layout.fillWidth: true
-                        text: isReply ? (card.modelData?.inlineReplyPlaceholder || I18n.tr("reply")) : card.modelData?.actions[index]?.text ?? ""
+                        text: isReply ? (card.notification?.inlineReplyPlaceholder || I18n.tr("reply")) : card.notification?.actions[index]?.text ?? ""
                         padding: 8
                         hoverEnabled: true
 
@@ -189,7 +190,7 @@ Rectangle {
                                 card.replying = true;
                                 inlineReply.forceActiveFocus();
                             } else {
-                                card.modelData?.actions[index]?.invoke();
+                                card.notification?.actions[index]?.invoke();
                             }
                         }
                     }
@@ -201,8 +202,8 @@ Rectangle {
 
                 Layout.fillWidth: true
                 Layout.topMargin: 6
-                visible: card.expanded && card.replying && (card.modelData?.hasInlineReply ?? false)
-                placeholderText: card.modelData?.inlineReplyPlaceholder || I18n.tr("replyPlaceholder")
+                visible: card.expanded && card.replying && (card.notification?.hasInlineReply ?? false)
+                placeholderText: card.notification?.inlineReplyPlaceholder || I18n.tr("replyPlaceholder")
                 color: Theme.textPrimary
                 placeholderTextColor: Theme.textSecondary
                 font.family: Theme.fontFamily
@@ -229,7 +230,7 @@ Rectangle {
                     inlineReply.clear();
                     card.replying = false;
                     inlineReply.focus = false;
-                    card.modelData?.sendInlineReply(reply);
+                    card.notification?.sendInlineReply(reply);
                 }
             }
         }

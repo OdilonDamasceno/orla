@@ -51,16 +51,19 @@ O comando `orla` fica disponível no sistema. Para iniciá-lo junto com o Hyprla
 
 ## Organização
 
-- `shell.qml`: inicia notificações, launcher e barras por monitor.
-- `AppBar.qml`: reserva a faixa superior e mantém o OSD de volume por monitor.
+- `shell.qml`: compõe as superfícies globais e as instâncias por monitor.
+- `surfaces/`: janelas Wayland da ilha superior, notificações e barra reservada por monitor.
+- `components/`: primitivas visuais reutilizáveis, sem responsabilidade de domínio.
 - `singletons/Theme.qml`: tokens compartilhados de cor, fonte, medidas e movimento. `textPrimary` e `textSecondary` representam os papéis de texto sobre superfícies.
 - `singletons/Config.qml`: resolução do monitor ativo, com fallback.
 - `singletons/I18n.qml`: traduções `pt_BR` e `en_US`; altere `locale` para selecionar o idioma.
-- `widgets/Notification.qml`: servidor, expiração e lista de notificações.
+- `services/`: lógica sem interface para busca/ativação do launcher e expiração de notificações.
+- `singletons/NotificationStore.qml`: servidor de notificações e histórico compartilhado da sessão.
+- `surfaces/NotificationOverlay.qml`: superfície e lista das notificações ativas.
 - `widgets/NotificationHistory.qml`: histórico da sessão agrupado por aplicativo dentro da ilha.
 - `widgets/NotificationCard.qml`: apresentação, ações e resposta de cada notificação.
-- `widgets/ApplicationLauncher.qml`: ilha central expansível com relógio, controles integrados, launcher e o system tray adjacente.
-- `widgets/Volume.qml`: OSD de volume e mute.
+- `surfaces/TopIsland.qml`: ilha central expansível com relógio, controles integrados, launcher e o system tray adjacente.
+- `widgets/VolumeOsd.qml`: OSD de volume e mute.
 - Demais arquivos em `widgets/`: controles e composição visual reutilizável.
 - `icons/`: SVGs locais.
 
@@ -98,7 +101,7 @@ quickshell log -p . -t 50 --no-color
 Para formatar:
 
 ```sh
-qmlformat -i shell.qml AppBar.qml singletons/*.qml widgets/*.qml
+qmlformat -i shell.qml components/*.qml services/*.qml singletons/*.qml surfaces/*.qml widgets/*.qml
 ```
 
 Confira visualmente foco, teclado, estados de interação, notificações, diferentes resoluções e múltiplos monitores. Consulte `AGENTS.md` antes de alterar o projeto. `.qmlls.ini` contém caminhos locais gerados pela sessão e não deve ser usado como configuração portátil de build.
