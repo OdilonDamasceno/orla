@@ -52,18 +52,18 @@ O comando `orla` fica disponível no sistema. Para iniciá-lo junto com o Hyprla
 ## Organização
 
 - `shell.qml`: inicia notificações, launcher e barras por monitor.
-- `AppBar.qml`: compõe bandeja, botão de volume, relógio e OSD por monitor.
+- `AppBar.qml`: reserva a faixa superior e mantém o OSD de volume por monitor.
 - `singletons/Theme.qml`: tokens compartilhados de cor, fonte, medidas e movimento. `textPrimary` e `textSecondary` representam os papéis de texto sobre superfícies.
 - `singletons/Config.qml`: resolução do monitor ativo, com fallback.
 - `singletons/I18n.qml`: traduções `pt_BR` e `en_US`; altere `locale` para selecionar o idioma.
 - `widgets/Notification.qml`: servidor, expiração e lista de notificações.
 - `widgets/NotificationCard.qml`: apresentação, ações e resposta de cada notificação.
-- `widgets/ApplicationLauncher.qml`: pesquisa e execução de aplicativos.
+- `widgets/ApplicationLauncher.qml`: ilha central expansível com relógio, controles integrados, launcher e o system tray adjacente.
 - `widgets/Volume.qml`: OSD de volume e mute.
 - Demais arquivos em `widgets/`: controles e composição visual reutilizável.
 - `icons/`: SVGs locais.
 
-O botão de controles mostra o volume; o painel aberto pelo relógio ainda é uma estrutura inicial, sem widgets de conteúdo. Não há persistência de histórico em disco.
+Um clique no relógio expande a própria ilha para mostrar os controles do sistema. O launcher continua acessível pelo atalho configurado no compositor. Não há persistência de histórico em disco.
 
 ## Launcher
 

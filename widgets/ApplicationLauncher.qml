@@ -5,6 +5,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Effects
 import QtQuick.Layouts
 import "../singletons"
 
@@ -13,7 +14,9 @@ PanelWindow {
 
     // A compact island that expands around the search results.
     property bool launcherOpen: false
+    property bool controlsOpen: false
     readonly property bool expanded: launcherOpen && query.length > 0
+    readonly property real collapsedWidth: Math.ceil(clockButtonLabel.implicitWidth + Theme.spacingLarge * 2)
     readonly property string query: normalize(search.text.trim())
     readonly property var matches: {
         if (!query.length)
@@ -50,8 +53,22 @@ PanelWindow {
             closeLauncher();
         } else {
             screen = Config.currentScreen;
+            controlsOpen = false;
             launcherOpen = true;
             Qt.callLater(() => search.forceActiveFocus());
+        }
+    }
+
+    function closeControls(): void {
+        controlsOpen = false;
+    }
+
+    function toggleControls(): void {
+        if (controlsOpen) {
+            closeControls();
+        } else {
+            closeLauncher();
+            controlsOpen = true;
         }
     }
 
@@ -71,8 +88,15 @@ PanelWindow {
     Shortcut {
         sequence: "Escape"
         context: Qt.WindowShortcut
-        enabled: root.launcherOpen
-        onActivated: root.closeLauncher()
+        enabled: root.launcherOpen || root.controlsOpen
+        onActivated: {
+            if (root.launcherOpen)
+                root.closeLauncher();
+            else if (systemControls.page !== "home")
+                systemControls.navigate("home");
+            else
+                root.closeControls();
+        }
     }
 
     function moveSelection(offset: int) {
@@ -82,28 +106,87 @@ PanelWindow {
         results.positionViewAtIndex(results.currentIndex, ListView.Contain);
     }
 
-    anchors.top: true
+    anchors {
+        top: true
+        left: true
+        right: true
+    }
     margins.top: 2
     // Keep the Wayland surface stable: only the scene inside it animates.
     // Resizing the native window every frame competes with compositor animations.
-    implicitWidth: Math.min(480, screen ? screen.width - 32 : 480)
-    implicitHeight: Math.min(501, screen ? screen.height - 16 : 501)
+    implicitHeight: Math.min(Math.max(501, Theme.controlsPopupMaxHeight) + Theme.floatingShadowMargin, screen ? screen.height - 16 : Math.max(501, Theme.controlsPopupMaxHeight) + Theme.floatingShadowMargin)
     exclusionMode: ExclusionMode.Ignore
-    // Request compositor keyboard focus as soon as the launcher opens.
-    WlrLayershell.keyboardFocus: launcherOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    // Request compositor keyboard focus while either expanded mode is active.
+    WlrLayershell.keyboardFocus: launcherOpen || controlsOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     color: "transparent"
     mask: Region {
-        item: island
+        Region {
+            item: island
+        }
+        Region {
+            item: trayIsland
+        }
+    }
+
+    SystemClock {
+        id: clock
+
+        precision: SystemClock.Minutes
+    }
+
+    RectangularShadow {
+        anchors.fill: island
+        radius: island.radius
+        blur: Theme.floatingShadowBlur
+        offset: Qt.vector2d(0, Theme.floatingShadowOffset)
+        color: Theme.floatingShadow
+    }
+
+    Item {
+        id: trayIsland
+
+        visible: tray.implicitWidth > 0
+        anchors {
+            top: island.top
+            left: island.right
+            leftMargin: Theme.spacingMedium
+        }
+        width: tray.implicitWidth
+        height: 28
+
+        RectangularShadow {
+            anchors.fill: traySurface
+            radius: traySurface.radius
+            blur: Theme.floatingShadowBlur
+            offset: Qt.vector2d(0, Theme.floatingShadowOffset)
+            color: Theme.floatingShadow
+        }
+
+        Rectangle {
+            id: traySurface
+
+            anchors.fill: parent
+            radius: height / 2
+            color: Theme.islandSurface
+            border.width: 1
+            border.color: Theme.outlineVariant
+
+            Tray {
+                id: tray
+
+                anchors.fill: parent
+            }
+        }
     }
 
     Rectangle {
         id: island
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
-        width: Math.min(root.width, root.launcherOpen ? (root.expanded ? 480 : 300) : 120)
-        height: root.launcherOpen ? Math.min(root.height, 52 + (root.expanded ? 17 + Math.max(72, Math.min(root.matches.length, 6) * 72) : 0)) : 28
-        radius: root.launcherOpen ? (root.expanded ? 32 : 26) : 14
-        color: Theme.surface
+        width: Math.min(root.width - Theme.floatingShadowMargin * 2, root.launcherOpen ? (root.expanded ? 480 : 300) : root.controlsOpen ? systemControls.preferredWidth : root.collapsedWidth)
+        height: root.launcherOpen ? Math.min(root.height - Theme.floatingShadowMargin, 52 + (root.expanded ? 17 + Math.max(72, Math.min(root.matches.length, 6) * 72) : 0)) : root.controlsOpen ? systemControls.implicitHeight : 28
+        radius: root.launcherOpen || root.controlsOpen ? Theme.radiusExtraLarge : 14
+        color: Theme.islandSurface
         border.width: 1
         border.color: Theme.outlineVariant
         clip: true
@@ -125,6 +208,49 @@ PanelWindow {
                 duration: Theme.motionDuration
                 easing.type: Easing.OutCubic
             }
+        }
+
+        Button {
+            id: clockButton
+
+            visible: !root.launcherOpen && !root.controlsOpen
+            anchors.fill: parent
+            padding: 0
+            hoverEnabled: true
+            Accessible.name: I18n.tr("systemControls")
+            Accessible.description: clockButtonLabel.text
+            onClicked: root.toggleControls()
+
+            background: Rectangle {
+                radius: island.radius
+                color: clockButton.down ? Theme.pressedSurface : clockButton.hovered ? Theme.hoverSurface : "transparent"
+                border.width: clockButton.visualFocus ? 1 : 0
+                border.color: Theme.primary
+            }
+
+            contentItem: Text {
+                id: clockButtonLabel
+
+                text: {
+                    const value = Qt.locale(I18n.locale).toString(clock.date, I18n.tr("time"));
+                    return value.charAt(0).toUpperCase() + value.slice(1);
+                }
+                color: Theme.textPrimary
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.labelSize
+                font.weight: Font.Medium
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+        }
+
+        SystemControlsPanel {
+            id: systemControls
+
+            anchors.fill: parent
+            active: root.controlsOpen
+            maximumHeight: root.height - Theme.floatingShadowMargin
+            onCloseRequested: root.closeControls()
         }
 
         RowLayout {

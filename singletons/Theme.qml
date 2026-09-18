@@ -7,6 +7,7 @@ Singleton {
     readonly property string fontFamily: "Sunghyun Sans"
 
     readonly property color surface: "#080809"
+    readonly property color islandSurface: "#000000"
     readonly property color surfaceContainer: "#101010"
     readonly property color surfaceContainerHigh: "#242424"
     // MD3 on-surface roles use text names to avoid QML signal-handler syntax.
@@ -22,6 +23,7 @@ Singleton {
     readonly property color pressedSurface: "#444444"
     readonly property color track: "#38383D"
     readonly property color shadow: Qt.rgba(0, 0, 0, 0.24)
+    readonly property color floatingShadow: Qt.rgba(0, 0, 0, 0.72)
     readonly property color glassHighlight: "#2fffffff"
     readonly property color mediaScrimStart: "#DB170F29"
     readonly property color mediaScrimEnd: "#B0170F29"
@@ -39,6 +41,9 @@ Singleton {
     readonly property int titleSize: 16
     readonly property int barItemHorizontalPadding: 20
     readonly property int barHeight: 32
+    readonly property int floatingShadowBlur: 20
+    readonly property int floatingShadowOffset: 5
+    readonly property int floatingShadowMargin: 20
     readonly property int motionDuration: 240
     readonly property int feedbackDuration: 150
     readonly property int controlTargetSize: 40

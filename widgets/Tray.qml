@@ -5,7 +5,7 @@ import Quickshell
 import "../singletons"
 
 RowLayout {
-    spacing: -20
+    spacing: 0
 
     Repeater {
         model: SystemTray.items
@@ -16,8 +16,8 @@ RowLayout {
             required property SystemTrayItem modelData
 
             Layout.fillHeight: true
-            leftPadding: Theme.barItemHorizontalPadding
-            rightPadding: Theme.barItemHorizontalPadding
+            leftPadding: Theme.spacingCompact
+            rightPadding: Theme.spacingCompact
             Accessible.name: modelData.title || modelData.id
 
             icon.source: modelData.icon
