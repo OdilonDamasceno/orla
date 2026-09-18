@@ -16,18 +16,24 @@ Scope {
 
     property int mode: LauncherBackend.Applications
     property string searchText: ""
+    property var fileResults: []
+    property var browserHistoryIndex: []
+    property string fileSearchQuery: ""
     readonly property bool wallpaperMode: mode === LauncherBackend.Wallpapers
     readonly property string normalizedQuery: normalize(searchText.trim())
+    readonly property bool searching: fileSearchProcess.running || historyProcess.running
     readonly property var applicationIndex: DesktopEntries.applications.values.map(entry => ({
                 "entry": entry,
                 "normalizedName": normalize(entry.name),
                 "searchableText": normalize([entry.name, entry.genericName, entry.comment, (entry.keywords ?? []).join(" ")].join(" "))
             }))
+    readonly property var recentApplications: recentState.appIds.map(entryId => DesktopEntries.byId(entryId)).filter(entry => entry !== null).slice(0, 6)
     readonly property var wallpaperIndex: {
         const entries = [];
         for (let index = 0; index < wallpaperFiles.count; ++index) {
             const fileName = wallpaperFiles.get(index, "fileName");
             entries.push({
+                "kind": "wallpaper",
                 "name": fileName.replace(/\.[^.]+$/, ""),
                 "fileName": fileName,
                 "path": wallpaperFiles.get(index, "filePath"),
@@ -43,30 +49,140 @@ Scope {
             return wallpaperIndex.filter(item => terms.every(term => item.searchableText.includes(term)));
         if (!normalizedQuery.length)
             return [];
-        return applicationIndex.filter(item => terms.every(term => item.searchableText.includes(term))).sort((a, b) => {
+
+        const applications = applicationIndex.filter(item => terms.every(term => item.searchableText.includes(term))).sort((a, b) => {
             const aPrefix = a.normalizedName.startsWith(normalizedQuery);
             const bPrefix = b.normalizedName.startsWith(normalizedQuery);
             return Number(bPrefix) - Number(aPrefix) || a.entry.name.localeCompare(b.entry.name);
-        }).map(item => item.entry);
+        }).slice(0, 8).map(item => ({
+                    "kind": "application",
+                    "name": item.entry.name,
+                    "description": item.entry.genericName || item.entry.comment || I18n.tr("applicationResult"),
+                    "icon": item.entry.icon,
+                    "entry": item.entry
+                }));
+        const history = browserHistoryIndex.filter(item => terms.every(term => item.searchableText.includes(term))).slice(0, 6);
+        const files = fileResults.filter(item => terms.every(term => item.searchableText.includes(term))).slice(0, 8);
+        return applications.concat(history, files);
     }
     property bool applyingWallpaper: false
     property string errorMessage: ""
 
     signal activationSucceeded
 
+    onNormalizedQueryChanged: scheduleFileSearch()
+    onWallpaperModeChanged: {
+        fileSearchTimer.stop();
+        if (fileSearchProcess.running)
+            fileSearchProcess.running = false;
+        fileResults = [];
+        if (!wallpaperMode)
+            scheduleFileSearch();
+    }
+
     function normalize(value: string): string {
         return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    }
+
+    function prepare(): void {
+        if (!wallpaperMode)
+            refreshBrowserHistory();
+    }
+
+    function refreshBrowserHistory(): void {
+        if (historyProcess.running)
+            historyProcess.running = false;
+        historyProcess.command = ["sqlite3", "-batch", "-noheader", "-separator", "\t", "file:" + Config.braveOriginHistoryPath + "?immutable=1", "SELECT replace(replace(coalesce(title, ''), char(9), ' '), char(10), ' '), replace(replace(url, char(9), ''), char(10), ''), last_visit_time FROM urls WHERE hidden = 0 AND url NOT LIKE 'brave://%' ORDER BY last_visit_time DESC LIMIT 500;"];
+        historyProcess.running = true;
+    }
+
+    function scheduleFileSearch(): void {
+        fileSearchTimer.stop();
+        fileResults = [];
+        if (fileSearchProcess.running)
+            fileSearchProcess.running = false;
+        if (!wallpaperMode && normalizedQuery.length >= 2)
+            fileSearchTimer.start();
+    }
+
+    function startFileSearch(): void {
+        fileSearchQuery = searchText.trim();
+        fileSearchProcess.command = ["fd", "--type", "file", "--ignore-case", "--glob", "*" + fileSearchQuery + "*", "--max-results", "12", ".", Config.fileSearchRoot];
+        fileSearchProcess.running = true;
+    }
+
+    function parseFileResults(output: string): var {
+        return output.split("\n").filter(path => path.length > 0).map(path => {
+            const separator = path.lastIndexOf("/");
+            const name = separator >= 0 ? path.slice(separator + 1) : path;
+            const parentPath = separator > 0 ? path.slice(0, separator) : Config.fileSearchRoot;
+            return {
+                "kind": "file",
+                "name": name,
+                "description": I18n.tr("fileResult") + " · " + parentPath,
+                "icon": iconForFile(name),
+                "path": path,
+                "searchableText": normalize(name + " " + path)
+            };
+        });
+    }
+
+    function iconForFile(fileName: string): string {
+        const extension = fileName.includes(".") ? fileName.split(".").pop().toLowerCase() : "";
+        if (["png", "jpg", "jpeg", "webp", "gif", "svg", "jxl"].includes(extension))
+            return "image-x-generic";
+        if (["mp3", "flac", "ogg", "wav", "m4a"].includes(extension))
+            return "audio-x-generic";
+        if (["mp4", "mkv", "webm", "mov", "avi"].includes(extension))
+            return "video-x-generic";
+        if (extension === "pdf")
+            return "application-pdf";
+        if (["zip", "7z", "rar", "tar", "gz", "xz"].includes(extension))
+            return "package-x-generic";
+        return "text-x-generic";
+    }
+
+    function historyTitle(title: string, url: string): string {
+        if (title.trim().length)
+            return title.trim();
+        return url.replace(/^https?:\/\//, "").split(/[\/?#]/)[0] || url;
+    }
+
+    function rememberApplication(entry): void {
+        const ids = recentState.appIds.filter(entryId => entryId !== entry.id);
+        recentState.appIds = [entry.id].concat(ids).slice(0, 6);
     }
 
     function activate(entry): void {
         if (!entry)
             return;
-        if (wallpaperMode)
+        if (wallpaperMode || entry.kind === "wallpaper") {
             applyWallpaper(entry);
-        else {
-            entry.execute();
-            activationSucceeded();
+        } else if (entry.kind === "application") {
+            activateApplication(entry.entry);
+        } else if (entry.kind === "file") {
+            openExternal(entry.path);
+        } else if (entry.kind === "history") {
+            openExternal(entry.url);
+        } else {
+            activateApplication(entry);
         }
+    }
+
+    function activateApplication(entry): void {
+        if (!entry)
+            return;
+        rememberApplication(entry);
+        entry.execute();
+        activationSucceeded();
+    }
+
+    function openExternal(target: string): void {
+        if (!target.length)
+            return;
+        externalOpenProcess.command = ["xdg-open", target];
+        externalOpenProcess.running = true;
+        activationSucceeded();
     }
 
     function applyWallpaper(entry): void {
@@ -75,14 +191,29 @@ Scope {
         errorMessage = "";
         applyingWallpaper = true;
         const monitors = Quickshell.screens.map(screen => screen.name);
-        wallpaperProcess.command = [
-            "sh",
-            "-c",
-            "wallpaper_path=$1; shift; for monitor do hyprctl hyprpaper wallpaper \"$monitor,$wallpaper_path,cover\" || exit 1; done",
-            "orla-wallpaper",
-            entry.path
-        ].concat(monitors);
+        wallpaperProcess.command = ["sh", "-c", "wallpaper_path=$1; shift; for monitor do hyprctl hyprpaper wallpaper \"$monitor,$wallpaper_path,cover\" || exit 1; done", "orla-wallpaper", entry.path].concat(monitors);
         wallpaperProcess.running = true;
+    }
+
+    FileView {
+        path: Quickshell.statePath("launcher.json")
+        blockLoading: true
+        atomicWrites: true
+        printErrors: false
+
+        JsonAdapter {
+            id: recentState
+
+            property var appIds: []
+        }
+    }
+
+    Timer {
+        id: fileSearchTimer
+
+        interval: 240
+        repeat: false
+        onTriggered: root.startFileSearch()
     }
 
     FolderListModel {
@@ -97,6 +228,53 @@ Scope {
         showOnlyReadable: true
         sortField: FolderListModel.Name
         sortCaseSensitive: false
+    }
+
+    Process {
+        id: historyProcess
+
+        stdout: StdioCollector {
+            id: historyOutput
+        }
+        onExited: exitCode => {
+            if (exitCode !== 0)
+                return;
+            const entries = [];
+            const seenUrls = {};
+            const lines = historyOutput.text.split("\n");
+            for (let index = 0; index < lines.length; ++index) {
+                const fields = lines[index].split("\t");
+                if (fields.length < 2 || !fields[1].length || seenUrls[fields[1]])
+                    continue;
+                seenUrls[fields[1]] = true;
+                const title = root.historyTitle(fields[0], fields[1]);
+                entries.push({
+                    "kind": "history",
+                    "name": title,
+                    "description": I18n.tr("braveHistoryResult") + " · " + fields[1],
+                    "icon": "brave-origin",
+                    "url": fields[1],
+                    "searchableText": root.normalize(title + " " + fields[1])
+                });
+            }
+            root.browserHistoryIndex = entries;
+        }
+    }
+
+    Process {
+        id: fileSearchProcess
+
+        stdout: StdioCollector {
+            id: fileSearchOutput
+        }
+        onExited: exitCode => {
+            if (exitCode === 0 && root.fileSearchQuery === root.searchText.trim())
+                root.fileResults = root.parseFileResults(fileSearchOutput.text);
+        }
+    }
+
+    Process {
+        id: externalOpenProcess
     }
 
     Process {

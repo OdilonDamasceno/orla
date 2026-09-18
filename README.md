@@ -67,7 +67,7 @@ O comando `orla` fica disponível no sistema. Para iniciá-lo junto com o Hyprla
 - Demais arquivos em `widgets/`: controles e composição visual reutilizável.
 - `icons/`: SVGs locais.
 
-Um clique no relógio expande a própria ilha para mostrar os controles do sistema. O launcher continua acessível pelo atalho configurado no compositor. Não há persistência de histórico em disco.
+Um clique no relógio expande a própria ilha para mostrar os controles do sistema. O launcher continua acessível pelo atalho configurado no compositor. O histórico de notificações não é persistido em disco.
 
 ## Launcher
 
@@ -81,6 +81,8 @@ quickshell ipc -p . call wallpapers isOpen
 ```
 
 Use as setas para selecionar resultados, Enter para abrir e Escape para fechar. Configure o atalho desejado no compositor usando o comando `toggle`.
+
+Ao abrir sem texto, o launcher mostra em uma linha até seis aplicativos iniciados recentemente por ele. Essa lista é persistida no diretório de estado do Quickshell. A pesquisa combina aplicativos instalados, arquivos não ocultos do diretório pessoal e até 500 páginas recentes do perfil `~/.config/BraveSoftware/Brave-Origin/Default/History`. O banco do Brave é aberto somente para leitura; arquivos e páginas são abertos pelo aplicativo padrão do sistema.
 
 O seletor de wallpapers lista as imagens de `~/.config/hypr/wallpapers`, permite filtrar pelo nome e aplica a escolha em todos os monitores pelo `hyprpaper`. Para abri-lo pelo Hyprland, associe `Alt+W` a `orla ipc call wallpapers toggle`.
 

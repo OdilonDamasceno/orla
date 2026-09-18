@@ -19,7 +19,10 @@ PanelWindow { // qmllint disable uncreatable-type
     property bool launcherOpen: false
     property bool controlsOpen: false
     readonly property bool wallpaperMode: launcherBackend.wallpaperMode
-    readonly property bool expanded: launcherOpen && (launcherBackend.normalizedQuery.length > 0 || wallpaperMode)
+    readonly property bool hasSearchQuery: launcherBackend.normalizedQuery.length > 0
+    readonly property bool showRecentApplications: launcherOpen && !wallpaperMode && !hasSearchQuery && launcherBackend.recentApplications.length > 0
+    readonly property bool showSearchResults: launcherOpen && (hasSearchQuery || wallpaperMode)
+    readonly property bool expanded: showRecentApplications || showSearchResults
     readonly property int resultRowHeight: wallpaperMode ? 80 : 72
     readonly property real collapsedWidth: Math.ceil(clockButtonLabel.implicitWidth + Theme.spacingLarge * 2)
     readonly property var searchResults: launcherBackend.results
@@ -41,6 +44,7 @@ PanelWindow { // qmllint disable uncreatable-type
             launcherBackend.errorMessage = "";
             search.clear();
             launcherOpen = true;
+            launcherBackend.prepare();
             Qt.callLater(() => search.forceActiveFocus());
         }
     }
@@ -191,8 +195,8 @@ PanelWindow { // qmllint disable uncreatable-type
         id: island
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
-        width: Math.min(root.width - Theme.floatingShadowMargin * 2, root.launcherOpen ? (root.expanded ? (root.wallpaperMode ? 560 : 480) : 300) : root.controlsOpen ? systemControls.preferredWidth : root.collapsedWidth)
-        height: root.launcherOpen ? Math.min(root.height - Theme.floatingShadowMargin, 52 + (root.expanded ? 17 + Math.max(root.resultRowHeight, Math.min(root.searchResults.length, 6) * root.resultRowHeight) : 0)) : root.controlsOpen ? systemControls.implicitHeight : 28
+        width: Math.min(root.width - Theme.floatingShadowMargin * 2, root.launcherOpen ? (root.expanded ? (root.wallpaperMode ? 560 : root.showRecentApplications ? 400 : 520) : 300) : root.controlsOpen ? systemControls.preferredWidth : root.collapsedWidth)
+        height: root.launcherOpen ? Math.min(root.height - Theme.floatingShadowMargin, 52 + (root.showRecentApplications ? 81 : root.showSearchResults ? 17 + Math.max(root.resultRowHeight, Math.min(root.searchResults.length, 6) * root.resultRowHeight) : 0)) : root.controlsOpen ? systemControls.implicitHeight : 28
         radius: root.launcherOpen || root.controlsOpen ? Theme.radiusExtraLarge : 14
         color: Theme.islandSurface
         border.width: 1
@@ -308,7 +312,7 @@ PanelWindow { // qmllint disable uncreatable-type
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.bodySize
                 color: Theme.textPrimary
-                placeholderText: root.wallpaperMode ? I18n.tr("searchWallpapers") : I18n.tr("searchApplications")
+                placeholderText: root.wallpaperMode ? I18n.tr("searchWallpapers") : I18n.tr("searchLauncher")
                 placeholderTextColor: Theme.textSecondary
                 selectionColor: Theme.secondaryContainer
                 selectedTextColor: Theme.textPrimary
@@ -316,7 +320,10 @@ PanelWindow { // qmllint disable uncreatable-type
                 selectByMouse: true
                 focus: root.launcherOpen
                 Accessible.name: placeholderText
-                onAccepted: launcherBackend.activate(root.searchResults[results.currentIndex])
+                onAccepted: {
+                    if (results.currentIndex >= 0 && results.currentIndex < root.searchResults.length)
+                        launcherBackend.activate(root.searchResults[results.currentIndex]);
+                }
                 Keys.onDownPressed: root.moveSelection(1)
                 Keys.onUpPressed: root.moveSelection(-1)
             }
@@ -361,9 +368,72 @@ PanelWindow { // qmllint disable uncreatable-type
             color: Theme.outlineVariant
         }
 
+        Row {
+            id: recentApplications
+
+            visible: root.showRecentApplications
+            anchors {
+                horizontalCenter: parent.horizontalCenter
+                top: searchBar.bottom
+                topMargin: Theme.spacingMedium
+            }
+            height: 64
+            spacing: Theme.spacingMedium
+            Accessible.role: Accessible.List
+            Accessible.name: I18n.tr("recentApplications")
+
+            Repeater {
+                model: launcherBackend.recentApplications
+
+                delegate: Button {
+                    id: recentApplication
+
+                    required property var modelData
+
+                    width: 48
+                    height: 48
+                    padding: Theme.spacingMedium
+                    hoverEnabled: true
+                    Accessible.name: modelData.name
+                    ToolTip.visible: hovered
+                    ToolTip.text: modelData.name
+                    onClicked: launcherBackend.activateApplication(modelData)
+
+                    background: Rectangle {
+                        radius: Theme.radiusMedium
+                        color: recentApplication.down ? Theme.pressedSurface : recentApplication.hovered ? Theme.hoverSurface : "transparent"
+                        border.width: recentApplication.visualFocus ? 1 : 0
+                        border.color: Theme.primary
+                    }
+
+                    contentItem: Item {
+                        Image {
+                            id: recentIcon
+
+                            anchors.fill: parent
+                            source: recentApplication.modelData.icon ? Quickshell.iconPath(recentApplication.modelData.icon, true) : ""
+                            sourceSize.width: 32
+                            sourceSize.height: 32
+                            fillMode: Image.PreserveAspectFit
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            visible: recentIcon.status !== Image.Ready
+                            text: recentApplication.modelData.name.charAt(0).toUpperCase()
+                            color: Theme.primary
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.titleSize
+                            font.weight: Font.Medium
+                        }
+                    }
+                }
+            }
+        }
+
         ListView {
             id: results
-            visible: root.expanded
+            visible: root.showSearchResults
             anchors {
                 top: searchBar.bottom
                 topMargin: 9
@@ -444,7 +514,7 @@ PanelWindow { // qmllint disable uncreatable-type
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: root.wallpaperMode ? (result.modelData.fileName ?? "") : (result.modelData.genericName || result.modelData.comment || "")
+                            text: root.wallpaperMode ? (result.modelData.fileName ?? "") : (result.modelData.description ?? "")
                             visible: text.length > 0
                             font {
                                 family: Theme.fontFamily
@@ -459,8 +529,8 @@ PanelWindow { // qmllint disable uncreatable-type
 
             Text {
                 anchors.centerIn: parent
-                visible: (launcherBackend.normalizedQuery.length > 0 || root.wallpaperMode) && results.count === 0
-                text: root.wallpaperMode ? I18n.tr("noWallpapers") : I18n.tr("noApplications")
+                visible: root.showSearchResults && results.count === 0
+                text: launcherBackend.searching ? I18n.tr("searching") : root.wallpaperMode ? I18n.tr("noWallpapers") : I18n.tr("noSearchResults")
                 color: Theme.textSecondary
                 font {
                     family: Theme.fontFamily

@@ -63,6 +63,7 @@
 
             makeWrapper ${lib.getExe qs} "$out/bin/orla" \
               --set FONTCONFIG_FILE ${fontconfig} \
+              --prefix PATH : ${lib.makeBinPath [ pkgs.fd pkgs.sqlite pkgs.xdg-utils ]} \
               --prefix QML_IMPORT_PATH : ${qt.qtdeclarative}/lib/qt-6/qml \
               --prefix QML_IMPORT_PATH : ${qt.qtlottie}/lib/qt-6/qml \
               --prefix QML_IMPORT_PATH : ${qs}/lib/qt-6/qml \
@@ -107,6 +108,9 @@
             qt.qtshadertools
 
             pkgs.fzf
+            pkgs.fd
+            pkgs.sqlite
+            pkgs.xdg-utils
           ];
 
           FONTCONFIG_FILE = fontconfig;
