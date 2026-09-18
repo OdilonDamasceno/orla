@@ -57,6 +57,7 @@ O comando `orla` fica disponível no sistema. Para iniciá-lo junto com o Hyprla
 - `singletons/Config.qml`: resolução do monitor ativo, com fallback.
 - `singletons/I18n.qml`: traduções `pt_BR` e `en_US`; altere `locale` para selecionar o idioma.
 - `widgets/Notification.qml`: servidor, expiração e lista de notificações.
+- `widgets/NotificationHistory.qml`: histórico da sessão agrupado por aplicativo dentro da ilha.
 - `widgets/NotificationCard.qml`: apresentação, ações e resposta de cada notificação.
 - `widgets/ApplicationLauncher.qml`: ilha central expansível com relógio, controles integrados, launcher e o system tray adjacente.
 - `widgets/Volume.qml`: OSD de volume e mute.

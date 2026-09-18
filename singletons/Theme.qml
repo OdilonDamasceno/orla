@@ -57,6 +57,7 @@ Singleton {
     readonly property int controlsPopupWidth: 360
     readonly property int controlsDetailsWidth: 400
     readonly property int controlsPopupMaxHeight: 560
+    readonly property int notificationHistoryWidth: 320
     readonly property int quickTileHeight: 64
     readonly property int mediaCardHeight: 144
     readonly property int mediaPlayButtonSize: 40

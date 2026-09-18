@@ -3,3 +3,4 @@ module singletons
 singleton I18n 1.0 I18n.qml
 singleton Theme 1.0 Theme.qml
 singleton Config 1.0 Config.qml
+singleton NotificationStore 1.0 NotificationStore.qml

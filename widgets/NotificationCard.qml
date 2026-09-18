@@ -40,7 +40,7 @@ Rectangle {
     Button {
         id: expandButton
         anchors.fill: parent
-        Accessible.name: card.modelData.summary
+        Accessible.name: card.modelData?.summary ?? ""
         background: Rectangle {
             color: "transparent"
             radius: card.radius
@@ -82,7 +82,7 @@ Rectangle {
             border.width: 1
         }
 
-        onClicked: card.modelData.dismiss()
+        onClicked: card.modelData?.dismiss()
     }
 
     RowLayout {
@@ -98,7 +98,7 @@ Rectangle {
             radius: 12
 
             Image {
-                source: card.modelData.image
+                source: card.modelData?.image ?? ""
                 sourceSize.width: 32
                 sourceSize.height: 32
             }
@@ -114,7 +114,7 @@ Rectangle {
                 Layout.fillWidth: true
 
                 textFormat: Text.PlainText
-                text: card.modelData.appName
+                text: card.modelData?.appName ?? ""
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.labelSize
@@ -124,7 +124,7 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
 
-                text: card.modelData.summary
+                text: card.modelData?.summary ?? ""
                 textFormat: Text.PlainText
                 color: Theme.textPrimary
                 font.family: Theme.fontFamily
@@ -136,7 +136,7 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
 
-                text: card.modelData.body
+                text: card.modelData?.body ?? ""
                 textFormat: Text.StyledText
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
@@ -150,20 +150,20 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.topMargin: 6
                 spacing: 6
-                visible: card.expanded && !card.replying && (card.modelData.actions.length > 0 || card.modelData.hasInlineReply)
+                visible: card.expanded && !card.replying && ((card.modelData?.actions.length ?? 0) > 0 || (card.modelData?.hasInlineReply ?? false))
 
                 Repeater {
                     // Inline reply is exposed separately from the regular actions.
-                    model: card.modelData.actions.length + (card.modelData.hasInlineReply ? 1 : 0)
+                    model: (card.modelData?.actions.length ?? 0) + (card.modelData?.hasInlineReply ? 1 : 0)
 
                     delegate: Button {
                         id: actionButton
 
                         required property int index
-                        readonly property bool isReply: index === card.modelData.actions.length
+                        readonly property bool isReply: index === (card.modelData?.actions.length ?? 0)
 
                         Layout.fillWidth: true
-                        text: isReply ? (card.modelData.inlineReplyPlaceholder || I18n.tr("reply")) : card.modelData.actions[index].text
+                        text: isReply ? (card.modelData?.inlineReplyPlaceholder || I18n.tr("reply")) : card.modelData?.actions[index]?.text ?? ""
                         padding: 8
                         hoverEnabled: true
 
@@ -189,7 +189,7 @@ Rectangle {
                                 card.replying = true;
                                 inlineReply.forceActiveFocus();
                             } else {
-                                card.modelData.actions[index].invoke();
+                                card.modelData?.actions[index]?.invoke();
                             }
                         }
                     }
@@ -201,8 +201,8 @@ Rectangle {
 
                 Layout.fillWidth: true
                 Layout.topMargin: 6
-                visible: card.expanded && card.replying && card.modelData.hasInlineReply
-                placeholderText: card.modelData.inlineReplyPlaceholder || I18n.tr("replyPlaceholder")
+                visible: card.expanded && card.replying && (card.modelData?.hasInlineReply ?? false)
+                placeholderText: card.modelData?.inlineReplyPlaceholder || I18n.tr("replyPlaceholder")
                 color: Theme.textPrimary
                 placeholderTextColor: Theme.textSecondary
                 font.family: Theme.fontFamily
@@ -229,7 +229,7 @@ Rectangle {
                     inlineReply.clear();
                     card.replying = false;
                     inlineReply.focus = false;
-                    card.modelData.sendInlineReply(reply);
+                    card.modelData?.sendInlineReply(reply);
                 }
             }
         }

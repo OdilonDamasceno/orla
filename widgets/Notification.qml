@@ -18,21 +18,8 @@ Scope {
         interactingNotifications = active ? remaining.concat([notification]) : remaining;
     }
 
-    NotificationServer {
-        id: notificationServer
-
-        actionsSupported: true
-        bodyImagesSupported: false
-        bodyMarkupSupported: true
-        imageSupported: true
-        inlineReplySupported: true
-        persistenceSupported: true
-
-        onNotification: notification => notification.tracked = true
-    }
-
     Instantiator {
-        model: notificationServer.trackedNotifications
+        model: NotificationStore.notifications
 
         delegate: Timer {
             id: expiryTimer
@@ -86,7 +73,7 @@ Scope {
     }
 
     LazyLoader {
-        active: notificationServer.trackedNotifications.values.length > 0
+        active: NotificationStore.notifications.values.length > 0
 
         PanelWindow { // qmllint disable uncreatable-type
             id: notificationWindow
@@ -123,7 +110,7 @@ Scope {
                 clip: true
                 spacing: Theme.spacingMedium
 
-                model: notificationServer.trackedNotifications
+                model: NotificationStore.notifications
                 delegate: Item {
                     id: notificationDelegate
 
