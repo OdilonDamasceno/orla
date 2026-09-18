@@ -6,7 +6,7 @@ import "../components"
 import "../singletons"
 
 RowLayout {
-    spacing: 0
+    spacing: -10
 
     Repeater {
         model: SystemTray.items
