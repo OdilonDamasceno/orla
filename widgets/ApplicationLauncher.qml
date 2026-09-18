@@ -3,6 +3,8 @@ pragma ComponentBehavior: Bound
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Widgets
+import Qt.labs.folderlistmodel
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
@@ -15,10 +17,34 @@ PanelWindow {
     // A compact island that expands around the search results.
     property bool launcherOpen: false
     property bool controlsOpen: false
-    readonly property bool expanded: launcherOpen && query.length > 0
+    property string launcherMode: "applications"
+    property bool applyingWallpaper: false
+    property string wallpaperError: ""
+    readonly property bool wallpaperMode: launcherMode === "wallpapers"
+    readonly property bool expanded: launcherOpen && (query.length > 0 || wallpaperMode)
+    readonly property int resultRowHeight: wallpaperMode ? 80 : 72
     readonly property real collapsedWidth: Math.ceil(clockButtonLabel.implicitWidth + Theme.spacingLarge * 2)
     readonly property string query: normalize(search.text.trim())
+    readonly property var wallpaperEntries: {
+        const entries = [];
+        const terms = query.length ? query.split(/\s+/) : [];
+        for (let index = 0; index < wallpaperFiles.count; ++index) {
+            const fileName = wallpaperFiles.get(index, "fileName");
+            const searchableName = normalize(fileName);
+            if (!terms.every(term => searchableName.includes(term)))
+                continue;
+            entries.push({
+                "name": fileName.replace(/\.[^.]+$/, ""),
+                "fileName": fileName,
+                "path": wallpaperFiles.get(index, "filePath"),
+                "url": wallpaperFiles.get(index, "fileUrl")
+            });
+        }
+        return entries;
+    }
     readonly property var matches: {
+        if (wallpaperMode)
+            return wallpaperEntries;
         if (!query.length)
             return [];
         const terms = query.split(/\s+/);
@@ -43,17 +69,46 @@ PanelWindow {
         closeLauncher();
     }
 
+    function activate(entry) {
+        if (wallpaperMode)
+            selectWallpaper(entry);
+        else
+            launch(entry);
+    }
+
+    function selectWallpaper(entry) {
+        if (!entry || applyingWallpaper)
+            return;
+        wallpaperError = "";
+        applyingWallpaper = true;
+        const monitors = Quickshell.screens.map(screen => screen.name);
+        wallpaperProcess.command = [
+            "sh",
+            "-c",
+            "wallpaper_path=$1; shift; for monitor do hyprctl hyprpaper wallpaper \"$monitor,$wallpaper_path,cover\" || exit 1; done",
+            "orla-wallpaper",
+            entry.path
+        ].concat(monitors);
+        wallpaperProcess.running = true;
+    }
+
     function closeLauncher() {
         launcherOpen = false;
+        launcherMode = "applications";
+        wallpaperError = "";
         search.clear();
     }
 
-    function toggleLauncher() {
-        if (launcherOpen) {
+    function toggleLauncher(mode: string) {
+        const requestedMode = mode || "applications";
+        if (launcherOpen && launcherMode === requestedMode) {
             closeLauncher();
         } else {
             screen = Config.currentScreen;
             controlsOpen = false;
+            launcherMode = requestedMode;
+            wallpaperError = "";
+            search.clear();
             launcherOpen = true;
             Qt.callLater(() => search.forceActiveFocus());
         }
@@ -75,13 +130,60 @@ PanelWindow {
     IpcHandler {
         target: "launcher"
         function toggle(): void {
-            root.toggleLauncher();
+            root.toggleLauncher("applications");
         }
         function close(): void {
             root.closeLauncher();
         }
         function isOpen(): bool {
             return root.launcherOpen;
+        }
+    }
+
+    IpcHandler {
+        target: "wallpapers"
+        function toggle(): void {
+            root.toggleLauncher("wallpapers");
+        }
+        function close(): void {
+            root.closeLauncher();
+        }
+        function isOpen(): bool {
+            return root.launcherOpen && root.wallpaperMode;
+        }
+    }
+
+    FolderListModel {
+        id: wallpaperFiles
+
+        folder: "file:///home/odilon/.config/hypr/wallpapers"
+        nameFilters: ["*.png", "*.jpg", "*.jpeg", "*.webp", "*.jxl"]
+        caseSensitive: false
+        showDirs: false
+        showFiles: true
+        showHidden: false
+        showOnlyReadable: true
+        sortField: FolderListModel.Name
+        sortCaseSensitive: false
+    }
+
+    Process {
+        id: wallpaperProcess
+
+        stdout: StdioCollector {
+            id: wallpaperProcessOutput
+        }
+        stderr: StdioCollector {
+            id: wallpaperProcessError
+        }
+        onExited: exitCode => {
+            root.applyingWallpaper = false;
+            if (exitCode === 0) {
+                root.closeLauncher();
+                return;
+            }
+            const details = (wallpaperProcessError.text || wallpaperProcessOutput.text).trim();
+            root.wallpaperError = details.length ? details : I18n.tr("wallpaperApplyFailed");
         }
     }
 
@@ -183,8 +285,8 @@ PanelWindow {
         id: island
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
-        width: Math.min(root.width - Theme.floatingShadowMargin * 2, root.launcherOpen ? (root.expanded ? 480 : 300) : root.controlsOpen ? systemControls.preferredWidth : root.collapsedWidth)
-        height: root.launcherOpen ? Math.min(root.height - Theme.floatingShadowMargin, 52 + (root.expanded ? 17 + Math.max(72, Math.min(root.matches.length, 6) * 72) : 0)) : root.controlsOpen ? systemControls.implicitHeight : 28
+        width: Math.min(root.width - Theme.floatingShadowMargin * 2, root.launcherOpen ? (root.expanded ? (root.wallpaperMode ? 560 : 480) : 300) : root.controlsOpen ? systemControls.preferredWidth : root.collapsedWidth)
+        height: root.launcherOpen ? Math.min(root.height - Theme.floatingShadowMargin, 52 + (root.expanded ? 17 + Math.max(root.resultRowHeight, Math.min(root.matches.length, 6) * root.resultRowHeight) : 0)) : root.controlsOpen ? systemControls.implicitHeight : 28
         radius: root.launcherOpen || root.controlsOpen ? Theme.radiusExtraLarge : 14
         color: Theme.islandSurface
         border.width: 1
@@ -300,7 +402,7 @@ PanelWindow {
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.bodySize
                 color: Theme.textPrimary
-                placeholderText: I18n.tr("searchApplications")
+                placeholderText: root.wallpaperMode ? I18n.tr("searchWallpapers") : I18n.tr("searchApplications")
                 placeholderTextColor: Theme.textSecondary
                 selectionColor: Theme.secondaryContainer
                 selectedTextColor: Theme.textPrimary
@@ -308,7 +410,7 @@ PanelWindow {
                 selectByMouse: true
                 focus: root.launcherOpen
                 Accessible.name: placeholderText
-                onAccepted: root.launch(root.matches[results.currentIndex])
+                onAccepted: root.activate(root.matches[results.currentIndex])
                 Keys.onDownPressed: root.moveSelection(1)
                 Keys.onUpPressed: root.moveSelection(-1)
             }
@@ -329,7 +431,7 @@ PanelWindow {
                     verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {
-                    radius: 24
+                    radius: Theme.radiusLarge
                     color: Theme.textPrimary
                     opacity: clearButton.down ? 0.12 : clearButton.hovered || clearButton.visualFocus ? 0.08 : 0
                 }
@@ -377,12 +479,15 @@ PanelWindow {
                 required property var modelData
                 required property int index
                 width: results.width
-                height: 72
+                height: root.resultRowHeight
                 highlighted: ListView.isCurrentItem
                 Accessible.name: modelData.name
-                onClicked: root.launch(modelData)
+                enabled: !root.applyingWallpaper
+                onClicked: root.activate(modelData)
                 background: Rectangle {
-                    radius: 24
+                    id: resultBackground
+
+                    radius: Theme.radiusLarge
                     color: result.highlighted ? Theme.secondaryContainer : Theme.surface
                     Rectangle {
                         anchors.fill: parent
@@ -393,20 +498,26 @@ PanelWindow {
                 }
                 contentItem: RowLayout {
                     spacing: 16
-                    Item {
-                        Layout.preferredWidth: 40
-                        Layout.preferredHeight: 40
+                    ClippingRectangle {
+                        id: wallpaperPreview
+
+                        readonly property real edgeMargin: Math.max(0, (result.height - height) / 2)
+
+                        Layout.preferredWidth: root.wallpaperMode ? 96 : 40
+                        Layout.preferredHeight: root.wallpaperMode ? 56 : 40
+                        radius: root.wallpaperMode ? Math.max(0, resultBackground.radius - edgeMargin) : 0
+                        color: "transparent"
                         Image {
                             id: appIcon
                             anchors.fill: parent
-                            source: result.modelData.icon ? Quickshell.iconPath(result.modelData.icon, true) : ""
-                            sourceSize.width: 40
-                            sourceSize.height: 40
-                            fillMode: Image.PreserveAspectFit
+                            source: root.wallpaperMode ? result.modelData.url : result.modelData.icon ? Quickshell.iconPath(result.modelData.icon, true) : ""
+                            sourceSize.width: root.wallpaperMode ? 192 : 40
+                            sourceSize.height: root.wallpaperMode ? 112 : 40
+                            fillMode: root.wallpaperMode ? Image.PreserveAspectCrop : Image.PreserveAspectFit
                         }
                         Text {
                             anchors.centerIn: parent
-                            visible: appIcon.status !== Image.Ready
+                            visible: !root.wallpaperMode && appIcon.status !== Image.Ready
                             text: result.modelData.name.charAt(0).toUpperCase()
                             color: Theme.primary
                             font.pixelSize: 24
@@ -427,7 +538,7 @@ PanelWindow {
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: result.modelData.genericName || result.modelData.comment
+                            text: root.wallpaperMode ? result.modelData.fileName : result.modelData.genericName || result.modelData.comment
                             visible: text.length > 0
                             font {
                                 family: Theme.fontFamily
@@ -442,12 +553,30 @@ PanelWindow {
 
             Text {
                 anchors.centerIn: parent
-                visible: root.query.length > 0 && results.count === 0
-                text: I18n.tr("noApplications")
+                visible: (root.query.length > 0 || root.wallpaperMode) && results.count === 0
+                text: root.wallpaperMode ? I18n.tr("noWallpapers") : I18n.tr("noApplications")
                 color: Theme.textSecondary
                 font {
                     family: Theme.fontFamily
                     pixelSize: 14
+                }
+            }
+
+            Text {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                    margins: Theme.spacingLarge
+                }
+                visible: root.wallpaperError.length > 0
+                text: root.wallpaperError
+                color: Theme.error
+                wrapMode: Text.Wrap
+                horizontalAlignment: Text.AlignHCenter
+                font {
+                    family: Theme.fontFamily
+                    pixelSize: Theme.labelSize
                 }
             }
         }

@@ -10,8 +10,11 @@ Singleton {
             "pt_BR": {
                 "time": "ddd d 'de' MMM hh:mm",
                 "searchApplications": "Pesquisar aplicativos",
+                "searchWallpapers": "Pesquisar wallpapers",
                 "clearSearch": "Limpar pesquisa",
                 "noApplications": "Nenhum aplicativo encontrado",
+                "noWallpapers": "Nenhum wallpaper encontrado",
+                "wallpaperApplyFailed": "Não foi possível aplicar o wallpaper.",
                 "closeNotification": "Fechar notificação",
                 "notificationHistory": "Histórico de notificações",
                 "emptyNotificationHistory": "Nenhuma notificação recente.",
@@ -88,8 +91,11 @@ Singleton {
             "en_US": {
                 "time": "ddd d MMM hh:mm",
                 "searchApplications": "Search applications",
+                "searchWallpapers": "Search wallpapers",
                 "clearSearch": "Clear search",
                 "noApplications": "No applications found",
+                "noWallpapers": "No wallpapers found",
+                "wallpaperApplyFailed": "Could not apply the wallpaper.",
                 "closeNotification": "Dismiss notification",
                 "notificationHistory": "Notification history",
                 "emptyNotificationHistory": "No recent notifications.",

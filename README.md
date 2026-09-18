@@ -72,9 +72,14 @@ Um clique no relógio expande a própria ilha para mostrar os controles do siste
 quickshell ipc -p . call launcher toggle
 quickshell ipc -p . call launcher close
 quickshell ipc -p . call launcher isOpen
+quickshell ipc -p . call wallpapers toggle
+quickshell ipc -p . call wallpapers close
+quickshell ipc -p . call wallpapers isOpen
 ```
 
 Use as setas para selecionar resultados, Enter para abrir e Escape para fechar. Configure o atalho desejado no compositor usando o comando `toggle`.
+
+O seletor de wallpapers lista as imagens de `~/.config/hypr/wallpapers`, permite filtrar pelo nome e aplica a escolha em todos os monitores pelo `hyprpaper`. Para abri-lo pelo Hyprland, associe `Alt+W` a `orla ipc call wallpapers toggle`.
 
 ## Verificação
 
