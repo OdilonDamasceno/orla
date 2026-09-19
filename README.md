@@ -52,7 +52,7 @@ O comando `orla` fica disponível no sistema. Para iniciá-lo junto com o Hyprla
 ## Organização
 
 - `shell.qml`: compõe as superfícies globais e as instâncias por monitor.
-- `surfaces/`: janelas Wayland da ilha superior, notificações e barra reservada por monitor.
+- `surfaces/`: janelas Wayland da barra superior e das notificações.
 - `components/`: primitivas visuais reutilizáveis, sem responsabilidade de domínio.
 - `singletons/Theme.qml`: tokens compartilhados de cor, fonte, medidas e movimento. `textPrimary` e `textSecondary` representam os papéis de texto sobre superfícies.
 - `singletons/Config.qml`: resolução do monitor ativo, com fallback.
@@ -62,7 +62,7 @@ O comando `orla` fica disponível no sistema. Para iniciá-lo junto com o Hyprla
 - `surfaces/NotificationOverlay.qml`: superfície e lista das notificações ativas.
 - `widgets/NotificationHistory.qml`: histórico da sessão agrupado por aplicativo dentro da ilha.
 - `widgets/NotificationCard.qml`: apresentação, ações e resposta de cada notificação.
-- `surfaces/TopIsland.qml`: ilha central expansível com relógio, controles integrados, launcher e o system tray adjacente.
+- `surfaces/TopBar.qml`: superfície superior criada por monitor; reserva a área da barra e reúne a ilha expansível, o system tray e o OSD de volume.
 - `widgets/VolumeOsd.qml`: OSD de volume e mute.
 - Demais arquivos em `widgets/`: controles e composição visual reutilizável.
 - `icons/`: SVGs locais.

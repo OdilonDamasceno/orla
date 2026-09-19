@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import Quickshell
-import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
 import QtQuick
@@ -38,7 +37,6 @@ PanelWindow { // qmllint disable uncreatable-type
         if (launcherOpen && launcherBackend.mode === mode) {
             closeLauncher();
         } else {
-            screen = Config.currentScreen;
             controlsOpen = false;
             launcherBackend.mode = mode;
             launcherBackend.errorMessage = "";
@@ -47,6 +45,14 @@ PanelWindow { // qmllint disable uncreatable-type
             launcherBackend.prepare();
             Qt.callLater(() => search.forceActiveFocus());
         }
+    }
+
+    function toggleApplicationLauncher(): void {
+        toggleLauncher(LauncherBackend.Applications);
+    }
+
+    function toggleWallpaperLauncher(): void {
+        toggleLauncher(LauncherBackend.Wallpapers);
     }
 
     function closeControls(): void {
@@ -58,34 +64,7 @@ PanelWindow { // qmllint disable uncreatable-type
             closeControls();
         } else {
             closeLauncher();
-            screen = Config.currentScreen;
             controlsOpen = true;
-        }
-    }
-
-    IpcHandler {
-        target: "launcher"
-        function toggle(): void {
-            root.toggleLauncher(LauncherBackend.Applications);
-        }
-        function close(): void {
-            root.closeLauncher();
-        }
-        function isOpen(): bool {
-            return root.launcherOpen;
-        }
-    }
-
-    IpcHandler {
-        target: "wallpapers"
-        function toggle(): void {
-            root.toggleLauncher(LauncherBackend.Wallpapers);
-        }
-        function close(): void {
-            root.closeLauncher();
-        }
-        function isOpen(): bool {
-            return root.launcherOpen && root.wallpaperMode;
         }
     }
 
@@ -128,7 +107,7 @@ PanelWindow { // qmllint disable uncreatable-type
     // Keep the Wayland surface stable: only the scene inside it animates.
     // Resizing the native window every frame competes with compositor animations.
     implicitHeight: Math.min(Math.max(501, Theme.controlsPopupMaxHeight) + Theme.floatingShadowMargin, screen ? screen.height - 16 : Math.max(501, Theme.controlsPopupMaxHeight) + Theme.floatingShadowMargin)
-    exclusionMode: ExclusionMode.Ignore
+    exclusiveZone: Theme.barHeight
     // Request compositor keyboard focus while either expanded mode is active.
     WlrLayershell.keyboardFocus: launcherOpen || controlsOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     color: "transparent"
@@ -145,6 +124,10 @@ PanelWindow { // qmllint disable uncreatable-type
         id: clock
 
         precision: SystemClock.Minutes
+    }
+
+    VolumeOsd {
+        targetScreen: root.screen
     }
 
     RectangularShadow {
