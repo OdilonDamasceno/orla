@@ -15,7 +15,14 @@ Rectangle {
     property bool expanded: false
     property bool replying: false
     readonly property bool hovered: cardHover.hovered || closeButton.hovered
-    readonly property bool interacting: hovered || (expanded && replying) || inlineReply.activeFocus || closeButton.activeFocus
+    readonly property bool actionFocused: {
+        for (let index = 0; index < actions.count; ++index) {
+            if (actions.itemAt(index)?.activeFocus)
+                return true;
+        }
+        return false;
+    }
+    readonly property bool interacting: hovered || (expanded && replying) || inlineReply.activeFocus || closeButton.activeFocus || expandButton.activeFocus || actionFocused
     signal interactionChanged(var notification, bool active)
 
     onInteractingChanged: interactionChanged(notification, interacting)
@@ -154,6 +161,7 @@ Rectangle {
                 visible: card.expanded && !card.replying && ((card.notification?.actions.length ?? 0) > 0 || (card.notification?.hasInlineReply ?? false))
 
                 Repeater {
+                    id: actions
                     // Inline reply is exposed separately from the regular actions.
                     model: (card.notification?.actions.length ?? 0) + (card.notification?.hasInlineReply ? 1 : 0)
 

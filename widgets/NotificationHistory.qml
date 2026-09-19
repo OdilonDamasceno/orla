@@ -30,7 +30,7 @@ Item {
         }
         return groupedNotifications;
     }
-    readonly property real contentImplicitHeight: historyHeader.implicitHeight + Theme.spacingMedium + Math.max(emptyState.implicitHeight, groupsColumn.implicitHeight)
+    readonly property real contentImplicitHeight: Math.max(Theme.controlTargetSize, historyHeader.implicitHeight) + Theme.spacingMedium + Math.max(emptyState.implicitHeight, groupsColumn.implicitHeight)
 
     implicitWidth: Theme.notificationHistoryWidth
     implicitHeight: contentImplicitHeight

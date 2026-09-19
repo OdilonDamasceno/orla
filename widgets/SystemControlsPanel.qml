@@ -18,13 +18,17 @@ Item {
         Network,
         Bluetooth,
         Audio,
-        Input
+        Input,
+        History
     }
 
     property bool active: false
     property int currentPage: SystemControlsPanel.Home
     property real maximumHeight: Theme.controlsPopupMaxHeight
-    readonly property bool showNotificationHistory: root.currentPage === SystemControlsPanel.Home
+    property real availableWidth: wideHomeWidth
+    readonly property real wideHomeWidth: Theme.controlsPopupWidth + Theme.spacingLarge * 2 + 1 + Theme.notificationHistoryWidth
+    readonly property bool compact: availableWidth < wideHomeWidth
+    readonly property bool showNotificationHistory: root.currentPage === SystemControlsPanel.History || (root.currentPage === SystemControlsPanel.Home && !root.compact)
     readonly property var defaultAudioSink: Pipewire.defaultAudioSink
     readonly property var defaultAudioSource: Pipewire.defaultAudioSource
     readonly property var bluetoothAdapter: Bluetooth.defaultAdapter
@@ -44,11 +48,11 @@ Item {
         return devices.length ? devices.map(device => device.name).join(", ") : I18n.tr(root.bluetoothAdapter?.enabled ? "serviceOn" : "serviceOff");
     }
     readonly property var activeMediaPlayer: Mpris.players.values.find(player => player.isPlaying) ?? Mpris.players.values[0] ?? null
-    readonly property string pageTitleKey: root.currentPage === SystemControlsPanel.Network ? "internet" : root.currentPage === SystemControlsPanel.Bluetooth ? "bluetooth" : root.currentPage === SystemControlsPanel.Input ? "microphone" : "audio"
+    readonly property string pageTitleKey: root.currentPage === SystemControlsPanel.History ? "notificationHistory" : root.currentPage === SystemControlsPanel.Network ? "internet" : root.currentPage === SystemControlsPanel.Bluetooth ? "bluetooth" : root.currentPage === SystemControlsPanel.Input ? "microphone" : "audio"
     readonly property real controlPaneWidth: (root.currentPage === SystemControlsPanel.Home ? Theme.controlsPopupWidth : Theme.controlsDetailsWidth) - Theme.spacingLarge * 2
-    readonly property real preferredWidth: root.showNotificationHistory ? Theme.spacingLarge * 2 + root.controlPaneWidth + Theme.spacingLarge * 2 + 1 + Theme.notificationHistoryWidth : Theme.controlsDetailsWidth
+    readonly property real preferredWidth: Math.min(root.availableWidth, root.currentPage === SystemControlsPanel.Home ? (root.compact ? Theme.controlsPopupWidth : root.wideHomeWidth) : Theme.controlsDetailsWidth)
     readonly property Item loadedPage: pageLoader.item as Item
-    readonly property real bodyHeight: root.currentPage === SystemControlsPanel.Home ? homeContent.implicitHeight : root.loadedPage?.implicitHeight ?? homeContent.implicitHeight
+    readonly property real bodyHeight: root.currentPage === SystemControlsPanel.History ? notificationHistory.contentImplicitHeight : root.currentPage === SystemControlsPanel.Home ? homeContent.implicitHeight : root.loadedPage?.implicitHeight ?? homeContent.implicitHeight
     readonly property real chromeHeight: Theme.spacingLarge * 2 + (header.visible ? Theme.spacingMedium + header.implicitHeight : 0)
 
     signal closeRequested
@@ -119,6 +123,9 @@ Item {
             Item {
                 id: pageContent
 
+                visible: root.currentPage !== SystemControlsPanel.History
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 Layout.preferredWidth: root.controlPaneWidth
                 Layout.fillHeight: true
 
@@ -212,6 +219,14 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                         }
 
+                        StateLayerButton {
+                            visible: root.compact
+                            Layout.fillWidth: true
+                            implicitHeight: Theme.controlTargetSize
+                            text: I18n.tr("notificationHistory")
+                            onClicked: root.navigate(SystemControlsPanel.History)
+                        }
+
                         MediaPlayerCard {
                             Layout.fillWidth: true
                             player: root.activeMediaPlayer
@@ -226,13 +241,13 @@ Item {
                     id: pageLoader
 
                     anchors.fill: parent
-                    active: root.active && root.currentPage !== SystemControlsPanel.Home
+                    active: root.active && root.currentPage !== SystemControlsPanel.Home && root.currentPage !== SystemControlsPanel.History
                     sourceComponent: root.currentPage === SystemControlsPanel.Network ? networkPage : root.currentPage === SystemControlsPanel.Bluetooth ? bluetoothPage : audioPage
                 }
             }
 
             Rectangle {
-                visible: root.showNotificationHistory
+                visible: root.showNotificationHistory && root.currentPage === SystemControlsPanel.Home
                 Layout.fillHeight: true
                 Layout.preferredWidth: 1
                 color: Theme.outlineVariant
@@ -242,6 +257,8 @@ Item {
                 id: notificationHistory
 
                 visible: root.showNotificationHistory
+                Layout.fillWidth: root.currentPage === SystemControlsPanel.History
+                Layout.minimumWidth: 0
                 Layout.fillHeight: true
                 Layout.preferredWidth: Theme.notificationHistoryWidth
             }

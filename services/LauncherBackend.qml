@@ -18,10 +18,12 @@ Scope {
     property string searchText: ""
     property var fileResults: []
     property var browserHistoryIndex: []
-    property string fileSearchQuery: ""
+    property int fileSearchRevision: 0
+    property int activeFileSearchRevision: -1
+    property bool openingExternal: false
     readonly property bool wallpaperMode: mode === LauncherBackend.Wallpapers
     readonly property string normalizedQuery: normalize(searchText.trim())
-    readonly property bool searching: fileSearchProcess.running || historyProcess.running
+    readonly property bool searching: !wallpaperMode && (fileSearchProcess.running || historyProcess.running)
     readonly property var applicationIndex: DesktopEntries.applications.values.map(entry => ({
                 "entry": entry,
                 "normalizedName": normalize(entry.name),
@@ -80,7 +82,7 @@ Scope {
 
     signal activationSucceeded
 
-    onNormalizedQueryChanged: scheduleFileSearch()
+    onSearchTextChanged: scheduleFileSearch()
     onWallpaperModeChanged: {
         fileSearchTimer.stop();
         if (fileSearchProcess.running)
@@ -102,22 +104,35 @@ Scope {
     function refreshBrowserHistory(): void {
         if (historyProcess.running)
             historyProcess.running = false;
-        historyProcess.command = ["sqlite3", "-batch", "-noheader", "-separator", "\t", "file:" + Config.braveOriginHistoryPath + "?immutable=1", "SELECT replace(replace(coalesce(title, ''), char(9), ' '), char(10), ' '), replace(replace(url, char(9), ''), char(10), ''), last_visit_time FROM urls WHERE hidden = 0 AND url NOT LIKE 'brave://%' ORDER BY last_visit_time DESC LIMIT 500;"];
+        browserHistoryIndex = [];
+        historyProcess.command = ["sqlite3", "-readonly", "-cmd", ".timeout 1000", "-batch", "-noheader", "-separator", "\t", Config.braveOriginHistoryPath, "SELECT replace(replace(coalesce(title, ''), char(9), ' '), char(10), ' '), replace(replace(url, char(9), ''), char(10), ''), last_visit_time FROM urls WHERE hidden = 0 AND url NOT LIKE 'brave://%' ORDER BY last_visit_time DESC LIMIT 500;"];
         historyProcess.running = true;
     }
 
     function scheduleFileSearch(): void {
+        fileSearchRevision += 1;
         fileSearchTimer.stop();
         fileResults = [];
         if (fileSearchProcess.running)
             fileSearchProcess.running = false;
-        if (!wallpaperMode && normalizedQuery.length >= 2)
+        if (!wallpaperMode)
+            errorMessage = "";
+        if (!wallpaperMode && normalizedQuery.length >= 2) {
             fileSearchTimer.start();
+        }
     }
 
     function startFileSearch(): void {
-        fileSearchQuery = searchText.trim();
-        fileSearchProcess.command = ["fd", "--type", "file", "--ignore-case", "--glob", "*" + fileSearchQuery + "*", "--max-results", "12", ".", Config.fileSearchRoot];
+        const terms = searchText.trim().split(/\s+/).filter(term => term.length > 0);
+        if (!terms.length)
+            return;
+
+        activeFileSearchRevision = fileSearchRevision;
+        const command = ["fd", "--type", "file", "--ignore-case", "--fixed-strings", "--max-results", "12"];
+        for (let index = 1; index < terms.length; ++index)
+            command.push("--and", terms[index]);
+        command.push("--", terms[0], Config.fileSearchRoot);
+        fileSearchProcess.command = command;
         fileSearchProcess.running = true;
     }
 
@@ -195,11 +210,12 @@ Scope {
     }
 
     function openExternal(target: string): void {
-        if (!target.length)
+        if (!target.length || openingExternal)
             return;
+        errorMessage = "";
+        openingExternal = true;
         externalOpenProcess.command = ["xdg-open", target];
         externalOpenProcess.running = true;
-        activationSucceeded();
     }
 
     function applyWallpaper(entry): void {
@@ -287,17 +303,55 @@ Scope {
             id: fileSearchOutput
         }
         onExited: exitCode => {
-            if (exitCode === 0 && root.fileSearchQuery === root.searchText.trim())
+            if (root.activeFileSearchRevision !== root.fileSearchRevision || root.wallpaperMode)
+                return;
+            if (exitCode === 0) {
                 root.fileResults = root.parseFileResults(fileSearchOutput.text);
+            } else {
+                root.fileResults = [];
+                root.errorMessage = I18n.tr("fileSearchFailed");
+            }
         }
     }
 
     Process {
         id: externalOpenProcess
+
+        // Failed starts do not emit exited. Defer until a normal exit handler
+        // has had a chance to clear the pending operation and report its result.
+        onRunningChanged: {
+            if (!running) {
+                Qt.callLater(() => {
+                    if (!externalOpenProcess.running && root.openingExternal) {
+                        root.openingExternal = false;
+                        root.errorMessage = I18n.tr("openExternalFailed");
+                    }
+                });
+            }
+        }
+
+        onExited: exitCode => {
+            root.openingExternal = false;
+            if (exitCode === 0)
+                root.activationSucceeded();
+            else
+                root.errorMessage = I18n.tr("openExternalFailed");
+        }
     }
 
     Process {
         id: wallpaperProcess
+
+        onRunningChanged: {
+            if (!running) {
+                Qt.callLater(() => {
+                    if (!wallpaperProcess.running && root.applyingWallpaper) {
+                        root.applyingWallpaper = false;
+                        root.errorMessage = I18n.tr("wallpaperApplyFailed");
+                    }
+                });
+            }
+        }
 
         stdout: StdioCollector {
             id: wallpaperProcessOutput

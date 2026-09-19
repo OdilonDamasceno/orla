@@ -58,6 +58,7 @@ PanelWindow { // qmllint disable uncreatable-type
             closeControls();
         } else {
             closeLauncher();
+            screen = Config.currentScreen;
             controlsOpen = true;
         }
     }
@@ -261,6 +262,7 @@ PanelWindow { // qmllint disable uncreatable-type
 
             anchors.fill: parent
             active: root.controlsOpen
+            availableWidth: Math.max(0, root.width - Theme.floatingShadowMargin * 2)
             maximumHeight: root.height - Theme.floatingShadowMargin
             onCloseRequested: root.closeControls()
         }
@@ -321,8 +323,9 @@ PanelWindow { // qmllint disable uncreatable-type
                 focus: root.launcherOpen
                 Accessible.name: placeholderText
                 onAccepted: {
-                    if (results.currentIndex >= 0 && results.currentIndex < root.searchResults.length)
-                        launcherBackend.activate(root.searchResults[results.currentIndex]);
+                    results.refreshResults();
+                    if (results.currentIndex >= 0 && results.currentIndex < results.count)
+                        launcherBackend.activate(results.model[results.currentIndex]);
                 }
                 Keys.onDownPressed: root.moveSelection(1)
                 Keys.onUpPressed: root.moveSelection(-1)
@@ -431,7 +434,7 @@ PanelWindow { // qmllint disable uncreatable-type
             }
         }
 
-        ListView {
+        LauncherResultsView {
             id: results
             visible: root.showSearchResults
             anchors {
@@ -445,8 +448,8 @@ PanelWindow { // qmllint disable uncreatable-type
                 rightMargin: 8
             }
             clip: true
-            model: root.searchResults
-            onModelChanged: currentIndex = count ? 0 : -1
+            entries: root.searchResults
+            selectionContext: launcherBackend.mode + ":" + search.text
             boundsBehavior: Flickable.StopAtBounds
             ScrollBar.vertical: ScrollBar {}
 
@@ -458,7 +461,7 @@ PanelWindow { // qmllint disable uncreatable-type
                 height: root.resultRowHeight
                 highlighted: ListView.isCurrentItem
                 Accessible.name: modelData.name
-                enabled: !launcherBackend.applyingWallpaper
+                enabled: !launcherBackend.applyingWallpaper && !launcherBackend.openingExternal
                 onClicked: launcherBackend.activate(modelData)
                 background: Rectangle {
                     id: resultBackground
