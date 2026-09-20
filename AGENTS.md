@@ -15,11 +15,14 @@ As regras abaixo são decisões de design deste projeto, não uma declaração d
 - `components/`: primitivas visuais reutilizáveis e sem estado de domínio.
 - `widgets/`: launcher, painéis, notificações e controles de domínio.
 - `services/`: lógica sem interface, processos e ciclos de vida auxiliares.
-- `singletons/Theme.qml`: fonte e destino dos tokens visuais compartilhados.
-- `singletons/Config.qml`: estado e configuração compartilhados.
+- `singletons/Theme.qml`: tokens visuais compartilhados derivados da configuração validada.
+- `singletons/Config.qml`: carregamento, defaults e validação das preferências do usuário.
 - `singletons/I18n.qml`: traduções e formatação localizada.
 - `singletons/qmldir`: registro dos singletons.
 - `icons/`: recursos vetoriais locais.
+- `docs/assets/`: imagens locais referenciadas pela documentação.
+- `config.example.json`: esquema de referência e defaults da configuração externa.
+- `README.md` e `README.en.md`: documentação pública equivalente em português e inglês.
 - `flake.nix` e `flake.lock`: ambiente de desenvolvimento e dependências Nix.
 
 Leia os componentes envolvidos antes de editar. Preserve alterações locais que não pertencem à tarefa; não reverta, remova ou recrie arquivos do usuário para facilitar a implementação.
@@ -34,7 +37,7 @@ Priorize superfícies neutras, um destaque cromático controlado, cantos arredon
 
 ### Tokens e cores
 
-- Centralize tokens reutilizados em `Theme.qml`: cores, espaçamentos, raios, tipografia, durações e opacidades. Hoje esse singleton contém apenas a família tipográfica; amplie-o conforme a tarefa exigir.
+- Centralize tokens reutilizados em `Theme.qml`: cores, espaçamentos, raios, tipografia, durações e opacidades. Preferências configuráveis são validadas por `Config.qml`; componentes visuais não devem ler o JSON diretamente.
 - Prefira papéis semânticos como `primary`, `onPrimary`, `primaryContainer`, `onPrimaryContainer`, `surface`, `surfaceContainer`, `onSurface`, `onSurfaceVariant`, `outline` e `error`, com pares de conteúdo e superfície compatíveis.
 - Evite repetir valores hexadecimais ou medidas em vários componentes. Migre valores existentes apenas no escopo necessário à alteração.
 - Preserve a aparência escura atual como referência inicial. Se adicionar tema claro, use os mesmos papéis semânticos e verifique os dois temas.
@@ -75,6 +78,17 @@ Priorize superfícies neutras, um destaque cromático controlado, cantos arredon
 - Para movimento reduzido, quando disponível ou implementado, elimine deslocamentos e escalas dispensáveis, mantendo o feedback de estado.
 - Inclua estados vazio, carregando, indisponível e erro quando relevantes. Evite alterações de tamanho que desloquem controles durante a interação.
 
+## Configuração externa
+
+- O arquivo opcional do usuário é `$XDG_CONFIG_HOME/orla/config.json`, com fallback para `~/.config/orla/config.json`. Não escreva ou substitua esse arquivo automaticamente.
+- `Config.qml` é a única fronteira de leitura e validação. Exponha propriedades derivadas e tipadas para o restante da shell; não espalhe acesso ao adapter JSON pelos componentes.
+- Preserve defaults funcionais quando o arquivo não existir, estiver incompleto ou contiver um valor fora do domínio aceito. Limite intervalos, quantidades e durações para evitar polling excessivo ou geometria inviável.
+- Mantenha `config.example.json`, `Config.qml`, `README.md` e `README.en.md` sincronizados ao adicionar, renomear ou remover uma opção.
+- Expanda `~/` somente em propriedades que representam caminhos. Não aceite comandos arbitrários vindos da configuração nem monte comandos por interpolação insegura.
+- Mantenha preferências em `$XDG_CONFIG_HOME` e estado interno em `$XDG_STATE_HOME`. Dados como contadores de uso não pertencem ao arquivo de preferências.
+- Mudanças de configuração devem atualizar bindings existentes sem recriar superfícies desnecessariamente. Quando houver observação de arquivo, preserve o último estado válido diante de falhas transitórias.
+- A Live Activity é genérica: use nomes como `LiveMatchService` e `FootballLiveActivity`. Não volte a acoplar serviços ou propriedades a um clube específico; o time padrão é apenas um default configurável.
+
 ## Convenções de implementação
 
 - Use indentação de quatro espaços em QML, nomes de componentes em `PascalCase` e propriedades/funções em `camelCase`. Siga o estilo do arquivo ao fazer alterações pequenas.
@@ -88,18 +102,27 @@ Priorize superfícies neutras, um destaque cromático controlado, cantos arredon
 - Novos textos de interface devem passar por `I18n.qml`, com entradas para `pt_BR` e `en_US`. Não confunda texto exibido com identificadores internos ou nomes fornecidos por aplicativos.
 - Ao adicionar singletons, atualize `singletons/qmldir`. Não edite caminhos gerados em `/nix/store` nem altere dependências ou `flake.lock` sem relação com a tarefa.
 
+## Documentação pública
+
+- `README.md` é a versão principal em português brasileiro e `README.en.md` é sua contraparte em inglês. Preserve links de alternância de idioma no topo e mantenha estrutura, comandos, avisos e recursos equivalentes nas duas versões.
+- Não traduza nomes de propriedades, caminhos, comandos, endpoints IPC ou identificadores de código. Traduza apenas a explicação ao redor deles.
+- Imagens versionadas ficam em `docs/assets/`, usam nomes descritivos e precisam de texto alternativo nas duas línguas. Comprima ativos grandes quando isso não prejudicar a legibilidade.
+- Diferencie explicitamente arte conceitual de captura real da interface. Screenshots não devem expor notificações, nomes, caminhos ou outras informações pessoais.
+- Ao mudar instalação, dependências, configuração, IPC, arquitetura ou limitações conhecidas, atualize os dois READMEs na mesma alteração.
+- Prefira exemplos copiáveis e verificados. Não anuncie suporte, compatibilidade ou verificações que o código atual não oferece.
+
 ## Desenvolvimento e validação
 
-O flake fornece um ambiente de desenvolvimento, não um pacote de aplicação ou uma suíte de testes declarada.
+O flake fornece um pacote executável e um ambiente de desenvolvimento, mas ainda não há uma suíte de testes automatizada.
 
 ```sh
 nix develop
-quickshell -p .
+quickshell -n -p .
 ```
 
 Execute a shell em uma sessão gráfica compatível. Antes de abrir uma segunda instância, confira se já existe uma instância ativa: barras, notificações e atalhos podem entrar em conflito. Não encerre processos do usuário sem autorização.
 
-- Para mudanças exclusivamente documentais, revise clareza, caminhos e `git diff --check`; não é necessário iniciar a interface.
+- Para mudanças exclusivamente documentais, revise clareza, paridade entre os dois READMEs, caminhos de imagens e `git diff --check`; não é necessário iniciar a interface.
 - Para mudanças QML, use `qmllint` nos arquivos alterados quando disponível no ambiente. Diferencie erros reais de limitações conhecidas dos imports de Quickshell; não suprima avisos amplamente para obter uma saída limpa.
 - Valide mudanças visuais na sessão real quando possível: alinhamento, contraste, hover, foco, teclado, abertura/fechamento, textos longos e limites da tela. Confira múltiplos monitores e escala quando a alteração afetar geometria.
 - Verifique logs para erros QML, bindings quebrados e acessos a propriedades inexistentes. Para alterações em Nix, execute verificações compatíveis com os outputs declarados.

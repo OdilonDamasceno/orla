@@ -1,0 +1,51 @@
+{
+    "version": 1,
+    "locale": "pt_BR",
+    "appearance": {
+        "fontFamily": "Sunghyun Sans",
+        "animationScale": 1.0,
+        "surfaceColor": "#080809",
+        "islandColor": "#000000",
+        "surfaceContainerColor": "#101010",
+        "surfaceContainerHighColor": "#242424",
+        "textPrimaryColor": "#F5F5F7",
+        "textSecondaryColor": "#A1A1AA",
+        "primaryColor": "#D0BCFF",
+        "primaryContentColor": "#381E72",
+        "errorColor": "#FFB4AB",
+        "liveIndicatorColor": "#FF453A",
+        "outlineColor": "#666666",
+        "outlineVariantColor": "#29292E"
+    },
+    "bar": {
+        "clockFormat": "ddd d 'de' MMM hh:mm",
+        "showTray": true,
+        "showLiveActivity": true
+    },
+    "liveActivity": {
+        "enabled": true,
+        "team": "Flamengo",
+        "refreshIntervalSeconds": 60,
+        "showBadges": true
+    },
+    "launcher": {
+        "fileSearchEnabled": true,
+        "fileSearchRoot": "~",
+        "browserHistoryEnabled": true,
+        "browserHistoryPath": "~/.config/BraveSoftware/Brave-Origin/Default/History",
+        "maximumResults": 8,
+        "frequentApplicationsLimit": 6,
+        "wallpaperDirectory": "~/.config/hypr/wallpapers"
+    },
+    "notifications": {
+        "defaultTimeoutSeconds": 5,
+        "historyLimit": 100,
+        "position": "top-right"
+    },
+    "osd": {
+        "volumeDurationMilliseconds": 1000
+    },
+    "accessibility": {
+        "reducedMotion": false
+    }
+}

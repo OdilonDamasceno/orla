@@ -14,9 +14,9 @@ import "../widgets"
 PanelWindow { // qmllint disable uncreatable-type
     id: root
 
-    property var flamengoMatch: null
-    property url flamengoHomeBadgeUrl: ""
-    property url flamengoAwayBadgeUrl: ""
+    property var liveMatch: null
+    property url liveMatchHomeBadgeUrl: ""
+    property url liveMatchAwayBadgeUrl: ""
     // A compact island that expands around the search results.
     property bool launcherOpen: false
     property bool controlsOpen: false
@@ -71,6 +71,23 @@ PanelWindow { // qmllint disable uncreatable-type
         }
     }
 
+    function openSettings(): void {
+        closeLauncher();
+        controlsOpen = true;
+        Qt.callLater(() => systemControls.navigate(SystemControlsPanel.Settings));
+    }
+
+    function toggleSettings(): void {
+        if (controlsOpen && systemControls.currentPage === SystemControlsPanel.Settings)
+            closeControls();
+        else
+            openSettings();
+    }
+
+    function settingsOpen(): bool {
+        return controlsOpen && systemControls.currentPage === SystemControlsPanel.Settings;
+    }
+
     LauncherBackend {
         id: launcherBackend
 
@@ -122,7 +139,7 @@ PanelWindow { // qmllint disable uncreatable-type
             item: trayIsland
         }
         Region {
-            item: flamengoScore
+            item: footballLiveActivity
         }
     }
 
@@ -136,18 +153,18 @@ PanelWindow { // qmllint disable uncreatable-type
         targetScreen: root.screen
     }
 
-    FlamengoScore {
-        id: flamengoScore
+    FootballLiveActivity {
+        id: footballLiveActivity
 
-        visible: root.flamengoMatch !== null
+        visible: Config.showLiveActivity && Config.liveActivityEnabled && root.liveMatch !== null
         anchors {
             top: island.top
             right: island.left
             rightMargin: Theme.spacingMedium
         }
-        matchData: root.flamengoMatch ?? ({})
-        homeBadgeUrl: root.flamengoHomeBadgeUrl
-        awayBadgeUrl: root.flamengoAwayBadgeUrl
+        matchData: root.liveMatch ?? ({})
+        homeBadgeUrl: root.liveMatchHomeBadgeUrl
+        awayBadgeUrl: root.liveMatchAwayBadgeUrl
     }
 
     RectangularShadow {
@@ -161,7 +178,7 @@ PanelWindow { // qmllint disable uncreatable-type
     Item {
         id: trayIsland
 
-        visible: tray.implicitWidth > 0
+        visible: Config.showTray && tray.implicitWidth > 0
         anchors {
             top: island.top
             left: island.right
@@ -248,7 +265,7 @@ PanelWindow { // qmllint disable uncreatable-type
                 id: clockButtonLabel
 
                 text: {
-                    const value = Qt.locale(I18n.locale).toString(clock.date, I18n.tr("time"));
+                    const value = Qt.locale(I18n.locale).toString(clock.date, Config.clockFormat);
                     return value.charAt(0).toUpperCase() + value.slice(1);
                 }
                 color: Theme.textPrimary

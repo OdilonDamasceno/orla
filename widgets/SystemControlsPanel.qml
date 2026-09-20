@@ -19,7 +19,8 @@ Item {
         Bluetooth,
         Audio,
         Input,
-        History
+        History,
+        Settings
     }
 
     property bool active: false
@@ -48,7 +49,7 @@ Item {
         return devices.length ? devices.map(device => device.name).join(", ") : I18n.tr(root.bluetoothAdapter?.enabled ? "serviceOn" : "serviceOff");
     }
     readonly property var activeMediaPlayer: Mpris.players.values.find(player => player.isPlaying) ?? Mpris.players.values[0] ?? null
-    readonly property string pageTitleKey: root.currentPage === SystemControlsPanel.History ? "notificationHistory" : root.currentPage === SystemControlsPanel.Network ? "internet" : root.currentPage === SystemControlsPanel.Bluetooth ? "bluetooth" : root.currentPage === SystemControlsPanel.Input ? "microphone" : "audio"
+    readonly property string pageTitleKey: root.currentPage === SystemControlsPanel.Settings ? "settings" : root.currentPage === SystemControlsPanel.History ? "notificationHistory" : root.currentPage === SystemControlsPanel.Network ? "internet" : root.currentPage === SystemControlsPanel.Bluetooth ? "bluetooth" : root.currentPage === SystemControlsPanel.Input ? "microphone" : "audio"
     readonly property real controlPaneWidth: (root.currentPage === SystemControlsPanel.Home ? Theme.controlsPopupWidth : Theme.controlsDetailsWidth) - Theme.spacingLarge * 2
     readonly property real preferredWidth: Math.min(root.availableWidth, root.currentPage === SystemControlsPanel.Home ? (root.compact ? Theme.controlsPopupWidth : root.wideHomeWidth) : Theme.controlsDetailsWidth)
     readonly property Item loadedPage: pageLoader.item as Item
@@ -220,6 +221,15 @@ Item {
                         }
 
                         StateLayerButton {
+                            Layout.fillWidth: true
+                            implicitHeight: Theme.controlTargetSize
+                            text: I18n.tr("settings")
+                            icon.source: "../icons/sliders-horizontal.svg"
+                            Accessible.name: I18n.tr("settings")
+                            onClicked: root.navigate(SystemControlsPanel.Settings)
+                        }
+
+                        StateLayerButton {
                             visible: root.compact
                             Layout.fillWidth: true
                             implicitHeight: Theme.controlTargetSize
@@ -242,7 +252,7 @@ Item {
 
                     anchors.fill: parent
                     active: root.active && root.currentPage !== SystemControlsPanel.Home && root.currentPage !== SystemControlsPanel.History
-                    sourceComponent: root.currentPage === SystemControlsPanel.Network ? networkPage : root.currentPage === SystemControlsPanel.Bluetooth ? bluetoothPage : audioPage
+                    sourceComponent: root.currentPage === SystemControlsPanel.Settings ? settingsPage : root.currentPage === SystemControlsPanel.Network ? networkPage : root.currentPage === SystemControlsPanel.Bluetooth ? bluetoothPage : audioPage
                 }
             }
 
@@ -285,5 +295,11 @@ Item {
         SystemAudioPage {
             inputMode: root.currentPage === SystemControlsPanel.Input
         }
+    }
+
+    Component {
+        id: settingsPage
+
+        SettingsPage {}
     }
 }

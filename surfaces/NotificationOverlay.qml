@@ -25,8 +25,10 @@ Scope {
             WlrLayershell.layer: WlrLayer.Overlay
 
             anchors {
-                top: true
-                right: true
+                top: Config.notificationPosition.startsWith("top")
+                bottom: Config.notificationPosition.startsWith("bottom")
+                left: Config.notificationPosition.endsWith("left")
+                right: Config.notificationPosition.endsWith("right")
             }
 
             implicitWidth: 320
@@ -42,15 +44,14 @@ Scope {
             ListView {
                 id: notificationList
 
-                anchors.top: parent.top
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.margins: Theme.spacingLarge
                 // Reserve space inside the clipped viewport for the floating close button.
                 readonly property int closeButtonOverflow: 6
                 anchors.leftMargin: Theme.spacingLarge - closeButtonOverflow
-                anchors.topMargin: Theme.spacingLarge - closeButtonOverflow
-                height: Math.min(contentHeight, Math.max(0, notificationWindow.height - y - Theme.spacingLarge))
+                y: Config.notificationPosition.startsWith("bottom") ? notificationWindow.height - height - Theme.spacingLarge + closeButtonOverflow : Theme.spacingLarge - closeButtonOverflow
+                height: Math.min(contentHeight, Math.max(0, notificationWindow.height - Theme.spacingLarge * 2 + closeButtonOverflow))
                 clip: true
                 spacing: Theme.spacingMedium
 

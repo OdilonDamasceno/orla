@@ -40,6 +40,7 @@
           root = ./.;
           fileset = lib.fileset.unions [
             ./shell.qml
+            ./config.example.json
             ./components
             ./icons
             ./services

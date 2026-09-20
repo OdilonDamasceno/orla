@@ -45,7 +45,7 @@ Scope {
     Timer {
         id: hideTimer
 
-        interval: 1000
+        interval: Config.volumeOsdDuration
         onTriggered: root.shouldShowOsd = false
     }
 

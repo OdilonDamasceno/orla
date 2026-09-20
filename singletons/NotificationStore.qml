@@ -7,7 +7,7 @@ import Quickshell.Services.Notifications
 Singleton {
     id: root
 
-    readonly property int historyLimit: 100
+    readonly property int historyLimit: Config.notificationHistoryLimit
     property int nextHistoryId: 1
     property var history: []
     property alias activeNotifications: notificationServer.trackedNotifications

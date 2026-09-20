@@ -4,22 +4,22 @@ import QtQuick
 import Quickshell
 
 Singleton {
-    readonly property string fontFamily: "Sunghyun Sans"
+    readonly property string fontFamily: Config.fontFamily
 
-    readonly property color surface: "#080809"
-    readonly property color islandSurface: "#000000"
-    readonly property color surfaceContainer: "#101010"
-    readonly property color surfaceContainerHigh: "#242424"
+    readonly property color surface: Config.surfaceColor
+    readonly property color islandSurface: Config.islandColor
+    readonly property color surfaceContainer: Config.surfaceContainerColor
+    readonly property color surfaceContainerHigh: Config.surfaceContainerHighColor
     // MD3 on-surface roles use text names to avoid QML signal-handler syntax.
-    readonly property color textPrimary: "#F5F5F7"
-    readonly property color textSecondary: "#A1A1AA"
-    readonly property color primary: "#D0BCFF"
-    readonly property color primaryContent: "#381E72"
-    readonly property color error: "#FFB4AB"
-    readonly property color liveIndicator: "#FF453A"
+    readonly property color textPrimary: Config.textPrimaryColor
+    readonly property color textSecondary: Config.textSecondaryColor
+    readonly property color primary: Config.primaryColor
+    readonly property color primaryContent: Config.primaryContentColor
+    readonly property color error: Config.errorColor
+    readonly property color liveIndicator: Config.liveIndicatorColor
     readonly property color secondaryContainer: "#27232F"
-    readonly property color outline: "#666666"
-    readonly property color outlineVariant: "#29292E"
+    readonly property color outline: Config.outlineColor
+    readonly property color outlineVariant: Config.outlineVariantColor
     readonly property color hoverSurface: "#70333333"
     readonly property color pressedSurface: "#444444"
     readonly property color track: "#38383D"
@@ -45,8 +45,8 @@ Singleton {
     readonly property int floatingShadowBlur: 20
     readonly property int floatingShadowOffset: 5
     readonly property int floatingShadowMargin: 20
-    readonly property int motionDuration: 240
-    readonly property int feedbackDuration: 150
+    readonly property int motionDuration: Math.round(240 * Config.animationScale)
+    readonly property int feedbackDuration: Math.round(150 * Config.animationScale)
     readonly property int controlTargetSize: 40
     readonly property int sliderIconSize: 20
     readonly property int sliderHandleWidth: 4

@@ -4,12 +4,13 @@ import QtQuick
 import QtQml.Models
 import Quickshell
 import Quickshell.Services.Notifications
+import "../singletons"
 
 Scope {
     id: root
 
     required property var notifications
-    readonly property int defaultExpireTimeout: 5000
+    readonly property int defaultExpireTimeout: Config.notificationDefaultTimeout
     property var pausedNotifications: []
 
     function setPaused(notification, paused: bool): void {

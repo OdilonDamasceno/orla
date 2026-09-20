@@ -21,12 +21,10 @@ Item {
     readonly property string awayLabel: teamLabel(awayTeam)
     readonly property string score: `${matchData?.home_score ?? 0} × ${matchData?.away_score ?? 0}`
     readonly property string liveTime: matchData?.live_time || I18n.tr("liveMatch")
-    readonly property string accessibleScore: `${I18n.tr("flamengoLiveScore")}: ${homeTeam?.name || homeName} ${score} ${awayTeam?.name || awayName}, ${liveTime}`
+    readonly property string accessibleScore: `${I18n.tr("teamLiveScore")}: ${homeTeam?.name || homeName} ${score} ${awayTeam?.name || awayName}, ${liveTime}`
 
     function teamLabel(team): string {
         const name = String(team?.short_name || team?.name || "").trim();
-        if (name.toLowerCase().includes("flamengo"))
-            return "FLA";
         return name.slice(0, 3).toUpperCase();
     }
 
@@ -70,6 +68,7 @@ Item {
             }
 
             TeamBadge {
+                visible: Config.liveActivityShowBadges
                 teamName: root.homeName
                 badgeUrl: root.homeBadgeUrl
             }
@@ -99,6 +98,7 @@ Item {
             }
 
             TeamBadge {
+                visible: Config.liveActivityShowBadges
                 teamName: root.awayName
                 badgeUrl: root.awayBadgeUrl
             }

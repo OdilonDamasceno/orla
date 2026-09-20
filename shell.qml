@@ -32,8 +32,8 @@ Scope {
 
     NotificationOverlay {}
 
-    GolazoService {
-        id: golazoService
+    LiveMatchService {
+        id: liveMatchService
     }
 
     IpcHandler {
@@ -70,6 +70,23 @@ Scope {
         }
     }
 
+    IpcHandler {
+        target: "settings"
+
+        function toggle(): void {
+            root.closeInactiveOverlays(root.activeTopBar);
+            root.activeTopBar?.toggleSettings();
+        }
+
+        function close(): void {
+            root.activeTopBar?.closeControls();
+        }
+
+        function isOpen(): bool {
+            return root.activeTopBar?.settingsOpen() ?? false;
+        }
+    }
+
     Variants {
         id: topBars
 
@@ -78,9 +95,9 @@ Scope {
             TopBar {
                 required property var modelData
                 screen: modelData
-                flamengoMatch: golazoService.flamengoMatch
-                flamengoHomeBadgeUrl: golazoService.homeBadgeUrl
-                flamengoAwayBadgeUrl: golazoService.awayBadgeUrl
+                liveMatch: liveMatchService.match
+                liveMatchHomeBadgeUrl: liveMatchService.homeBadgeUrl
+                liveMatchAwayBadgeUrl: liveMatchService.awayBadgeUrl
             }
         }
     }

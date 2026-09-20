@@ -38,7 +38,7 @@ Scope {
                 "count": typeof record === "number" ? record : (record?.count ?? 0),
                 "lastUsed": typeof record === "number" ? 0 : (record?.lastUsed ?? 0)
             };
-        }).filter(item => item.entry !== null && item.count > 0).sort((a, b) => b.count - a.count || b.lastUsed - a.lastUsed).slice(0, 6).map(item => item.entry);
+        }).filter(item => item.entry !== null && item.count > 0).sort((a, b) => b.count - a.count || b.lastUsed - a.lastUsed).slice(0, Config.frequentApplicationsLimit).map(item => item.entry);
     }
     readonly property var wallpaperIndex: {
         const entries = [];
@@ -66,16 +66,16 @@ Scope {
             const aPrefix = a.normalizedName.startsWith(normalizedQuery);
             const bPrefix = b.normalizedName.startsWith(normalizedQuery);
             return Number(bPrefix) - Number(aPrefix) || a.entry.name.localeCompare(b.entry.name);
-        }).slice(0, 8).map(item => ({
+        }).slice(0, Config.launcherMaximumResults).map(item => ({
                     "kind": "application",
                     "name": item.entry.name,
                     "description": item.entry.genericName || item.entry.comment || I18n.tr("applicationResult"),
                     "icon": item.entry.icon,
                     "entry": item.entry
                 }));
-        const history = browserHistoryIndex.filter(item => terms.every(term => item.searchableText.includes(term))).slice(0, 6);
-        const files = fileResults.filter(item => terms.every(term => item.searchableText.includes(term))).slice(0, 8);
-        return applications.concat(history, files);
+        const history = Config.browserHistoryEnabled ? browserHistoryIndex.filter(item => terms.every(term => item.searchableText.includes(term))).slice(0, Config.launcherMaximumResults) : [];
+        const files = Config.fileSearchEnabled ? fileResults.filter(item => terms.every(term => item.searchableText.includes(term))).slice(0, Config.launcherMaximumResults) : [];
+        return applications.concat(history, files).slice(0, Config.launcherMaximumResults);
     }
     property bool applyingWallpaper: false
     property string errorMessage: ""
@@ -97,15 +97,17 @@ Scope {
     }
 
     function prepare(): void {
-        if (!wallpaperMode)
+        if (!wallpaperMode && Config.browserHistoryEnabled)
             refreshBrowserHistory();
     }
 
     function refreshBrowserHistory(): void {
+        if (!Config.browserHistoryEnabled)
+            return;
         if (historyProcess.running)
             historyProcess.running = false;
         browserHistoryIndex = [];
-        historyProcess.command = ["sqlite3", "-readonly", "-cmd", ".timeout 1000", "-batch", "-noheader", "-separator", "\t", Config.braveOriginHistoryPath, "SELECT replace(replace(coalesce(title, ''), char(9), ' '), char(10), ' '), replace(replace(url, char(9), ''), char(10), ''), last_visit_time FROM urls WHERE hidden = 0 AND url NOT LIKE 'brave://%' ORDER BY last_visit_time DESC LIMIT 500;"];
+        historyProcess.command = ["sqlite3", "-readonly", "-cmd", ".timeout 1000", "-batch", "-noheader", "-separator", "\t", Config.browserHistoryPath, "SELECT replace(replace(coalesce(title, ''), char(9), ' '), char(10), ' '), replace(replace(url, char(9), ''), char(10), ''), last_visit_time FROM urls WHERE hidden = 0 AND url NOT LIKE 'brave://%' ORDER BY last_visit_time DESC LIMIT 500;"];
         historyProcess.running = true;
     }
 
@@ -117,7 +119,7 @@ Scope {
             fileSearchProcess.running = false;
         if (!wallpaperMode)
             errorMessage = "";
-        if (!wallpaperMode && normalizedQuery.length >= 2) {
+        if (!wallpaperMode && Config.fileSearchEnabled && normalizedQuery.length >= 2) {
             fileSearchTimer.start();
         }
     }
@@ -128,7 +130,7 @@ Scope {
             return;
 
         activeFileSearchRevision = fileSearchRevision;
-        const command = ["fd", "--type", "file", "--ignore-case", "--fixed-strings", "--max-results", "12"];
+        const command = ["fd", "--type", "file", "--ignore-case", "--fixed-strings", "--max-results", String(Config.launcherMaximumResults)];
         for (let index = 1; index < terms.length; ++index)
             command.push("--and", terms[index]);
         command.push("--", terms[0], Config.fileSearchRoot);
