@@ -59,7 +59,7 @@ From a local clone:
 nix run .
 ```
 
-The package includes Quickshell, Qt, the Sunghyun Sans font, `fd`, SQLite, and `xdg-open`. Live scores require the `golazo` command to be available in `PATH`; the rest of the shell continues to work without it.
+The package includes Quickshell, Qt, the Sunghyun Sans font, `fd`, SQLite, and `xdg-open`. The Live Activity fetches live football matches from SofaScore's public endpoint; network failures only degrade this integration.
 
 ## Install on NixOS
 
@@ -218,7 +218,7 @@ Read [`AGENTS.md`](AGENTS.md) before contributing. It documents the project's de
 
 ## Project status
 
-Orla is under active development and currently targets Hyprland. Some integrations depend on the host environment, including PipeWire, NetworkManager, Bluetooth, `hyprpaper`, and `golazo`. Missing services should degrade only the affected feature instead of preventing the shell from starting.
+Orla is under active development and currently targets Hyprland. Some integrations depend on the host environment, including PipeWire, NetworkManager, Bluetooth, `hyprpaper`, and SofaScore's public API. Missing services should degrade only the affected feature instead of preventing the shell from starting.
 
 ## License
 

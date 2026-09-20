@@ -59,7 +59,7 @@ Em um clone local:
 nix run .
 ```
 
-O pacote inclui Quickshell, Qt, a fonte Sunghyun Sans, `fd`, SQLite e `xdg-open`. A integração de placar requer o comando `golazo` disponível no `PATH`; sem ele, o restante da shell continua funcionando.
+O pacote inclui Quickshell, Qt, a fonte Sunghyun Sans, `fd`, SQLite e `xdg-open`. A Live Activity consulta os jogos de futebol ao vivo pelo endpoint público do SofaScore; falhas de rede degradam somente essa integração.
 
 ## Instalar no NixOS
 
@@ -218,7 +218,7 @@ Leia [`AGENTS.md`](AGENTS.md) antes de contribuir. Ele documenta decisões de de
 
 ## Estado do projeto
 
-O Orla está em desenvolvimento ativo e atualmente é direcionado a Hyprland. Algumas integrações dependem do ambiente do sistema, como PipeWire, NetworkManager, Bluetooth, `hyprpaper` e `golazo`. Ausências devem degradar a funcionalidade afetada sem impedir a inicialização da shell.
+O Orla está em desenvolvimento ativo e atualmente é direcionado a Hyprland. Algumas integrações dependem do ambiente do sistema, como PipeWire, NetworkManager, Bluetooth, `hyprpaper` e a API pública do SofaScore. Ausências devem degradar a funcionalidade afetada sem impedir a inicialização da shell.
 
 ## Licença
 

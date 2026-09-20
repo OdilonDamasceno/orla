@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import "../singletons"
 
 Scope {
@@ -10,8 +9,10 @@ Scope {
 
     readonly property int refreshInterval: Config.liveActivityRefreshInterval
     readonly property string favoriteTeam: Config.liveActivityTeam
+    readonly property string liveEventsUrl: "https://api.sofascore.com/api/v1/sport/football/events/live"
     property var match: null
     property bool available: true
+    property var activeRequest: null
     property var badgeUrls: ({})
     property var pendingBadgeRequests: ({})
     readonly property string homeBadgeUrl: badgeForTeam(match?.home_team)
@@ -68,7 +69,7 @@ Scope {
                 urls[key] = result?.strBadge ? result.strBadge + "/tiny" : "";
                 root.badgeUrls = urls;
             } catch (error) {
-                // Keep the fallback visible and retry on the next match refresh.
+                // Keep the text fallback visible and retry on the next match refresh.
             }
         };
         request.open("GET", "https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=" + encodeURIComponent(name));
@@ -83,30 +84,84 @@ Scope {
         requestBadge(currentMatch.away_team);
     }
 
-    function updateFromOutput(output: string): void {
-        try {
-            const envelope = JSON.parse(output);
-            if (envelope.status !== "ok" || !Array.isArray(envelope.data)) {
-                available = false;
-                match = null;
-                return;
-            }
+    function liveTimeForEvent(event): string {
+        const statusCode = Number(event?.status?.code ?? 0);
+        if (statusCode === 31)
+            return I18n.tr("halfTime");
 
-            match = envelope.data.find(candidate => candidate.status === "live" && (isFavoriteTeam(candidate.home_team) || isFavoriteTeam(candidate.away_team))) ?? null;
-            requestMatchBadges(match);
-            available = true;
-        } catch (error) {
-            available = false;
-            match = null;
+        const timing = event?.time ?? event?.statusTime;
+        const periodStartedAt = Number(timing?.currentPeriodStartTimestamp ?? timing?.timestamp ?? 0);
+        if (periodStartedAt <= 0)
+            return event?.status?.description || I18n.tr("liveMatch");
+
+        const initialSeconds = Number(timing?.initial ?? 0);
+        const maximumSeconds = Number(timing?.max ?? 0);
+        const elapsedSeconds = Math.max(0, Math.floor(Date.now() / 1000) - periodStartedAt + initialSeconds);
+        if (maximumSeconds > 0 && elapsedSeconds > maximumSeconds) {
+            const regulationMinute = Math.floor(maximumSeconds / 60);
+            const additionalMinute = Math.max(1, Math.ceil((elapsedSeconds - maximumSeconds) / 60));
+            return `${regulationMinute}+${additionalMinute}'`;
         }
+
+        return `${Math.max(1, Math.floor(elapsedSeconds / 60) + 1)}'`;
+    }
+
+    function normalizedTeam(team): var {
+        return {
+            id: Number(team?.id ?? 0),
+            name: String(team?.name ?? ""),
+            short_name: String(team?.nameCode || team?.shortName || team?.name || "")
+        };
+    }
+
+    function normalizedEvent(event): var {
+        return {
+            id: Number(event?.id ?? 0),
+            status: "live",
+            home_team: normalizedTeam(event?.homeTeam),
+            away_team: normalizedTeam(event?.awayTeam),
+            home_score: Number(event?.homeScore?.current ?? event?.homeScore?.display ?? 0),
+            away_score: Number(event?.awayScore?.current ?? event?.awayScore?.display ?? 0),
+            live_time: liveTimeForEvent(event)
+        };
+    }
+
+    function updateFromResponse(response): void {
+        if (!Array.isArray(response?.events))
+            throw new Error("Invalid SofaScore live events response");
+
+        const event = response.events.find(candidate => candidate?.status?.type === "inprogress"
+            && (isFavoriteTeam(candidate?.homeTeam) || isFavoriteTeam(candidate?.awayTeam))) ?? null;
+        match = event ? normalizedEvent(event) : null;
+        requestMatchBadges(match);
+        available = true;
     }
 
     function refresh(): void {
-        if (!Config.liveActivityEnabled || golazoProcess.running)
+        if (!Config.liveActivityEnabled || activeRequest !== null)
             return;
 
-        golazoProcess.command = ["golazo", "live", "--timeout", "10s"];
-        golazoProcess.running = true;
+        const request = new XMLHttpRequest();
+        activeRequest = request;
+        request.onreadystatechange = function (): void {
+            if (request.readyState !== XMLHttpRequest.DONE)
+                return;
+
+            root.activeRequest = null;
+            if (request.status !== 200) {
+                root.available = false;
+                return;
+            }
+
+            try {
+                root.updateFromResponse(JSON.parse(request.responseText));
+            } catch (error) {
+                root.available = false;
+            }
+        };
+        request.open("GET", liveEventsUrl);
+        request.setRequestHeader("Accept", "application/json");
+        request.send();
     }
 
     onFavoriteTeamChanged: {
@@ -119,10 +174,14 @@ Scope {
         target: Config
 
         function onLiveActivityEnabledChanged(): void {
-            if (Config.liveActivityEnabled)
+            if (Config.liveActivityEnabled) {
                 root.refresh();
-            else
+            } else {
+                if (root.activeRequest !== null)
+                    root.activeRequest.abort();
+                root.activeRequest = null;
                 root.match = null;
+            }
         }
 
         function onLiveActivityShowBadgesChanged(): void {
@@ -140,19 +199,5 @@ Scope {
         repeat: true
         running: Config.liveActivityEnabled
         onTriggered: root.refresh()
-    }
-
-    Process {
-        id: golazoProcess
-
-        stdout: StdioCollector {
-            id: golazoOutput
-        }
-        onExited: exitCode => {
-            if (exitCode === 0)
-                root.updateFromOutput(golazoOutput.text);
-            else
-                root.available = false;
-        }
     }
 }
