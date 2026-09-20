@@ -14,6 +14,9 @@ import "../widgets"
 PanelWindow { // qmllint disable uncreatable-type
     id: root
 
+    property var flamengoMatch: null
+    property url flamengoHomeBadgeUrl: ""
+    property url flamengoAwayBadgeUrl: ""
     // A compact island that expands around the search results.
     property bool launcherOpen: false
     property bool controlsOpen: false
@@ -118,6 +121,9 @@ PanelWindow { // qmllint disable uncreatable-type
         Region {
             item: trayIsland
         }
+        Region {
+            item: flamengoScore
+        }
     }
 
     SystemClock {
@@ -128,6 +134,20 @@ PanelWindow { // qmllint disable uncreatable-type
 
     VolumeOsd {
         targetScreen: root.screen
+    }
+
+    FlamengoScore {
+        id: flamengoScore
+
+        visible: root.flamengoMatch !== null
+        anchors {
+            top: island.top
+            right: island.left
+            rightMargin: Theme.spacingMedium
+        }
+        matchData: root.flamengoMatch ?? ({})
+        homeBadgeUrl: root.flamengoHomeBadgeUrl
+        awayBadgeUrl: root.flamengoAwayBadgeUrl
     }
 
     RectangularShadow {

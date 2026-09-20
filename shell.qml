@@ -1,8 +1,10 @@
+pragma ComponentBehavior: Bound
 //@ pragma UseQApplication
 
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "services"
 import "singletons"
 import "surfaces"
 
@@ -29,6 +31,10 @@ Scope {
     }
 
     NotificationOverlay {}
+
+    GolazoService {
+        id: golazoService
+    }
 
     IpcHandler {
         target: "launcher"
@@ -72,6 +78,9 @@ Scope {
             TopBar {
                 required property var modelData
                 screen: modelData
+                flamengoMatch: golazoService.flamengoMatch
+                flamengoHomeBadgeUrl: golazoService.homeBadgeUrl
+                flamengoAwayBadgeUrl: golazoService.awayBadgeUrl
             }
         }
     }

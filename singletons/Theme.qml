@@ -16,6 +16,7 @@ Singleton {
     readonly property color primary: "#D0BCFF"
     readonly property color primaryContent: "#381E72"
     readonly property color error: "#FFB4AB"
+    readonly property color liveIndicator: "#FF453A"
     readonly property color secondaryContainer: "#27232F"
     readonly property color outline: "#666666"
     readonly property color outlineVariant: "#29292E"
